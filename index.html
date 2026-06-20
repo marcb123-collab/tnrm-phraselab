@@ -58,11 +58,7 @@
     scrollbar-width:thin;scrollbar-color:var(--line) transparent}
   .lyrics::-webkit-scrollbar{width:6px}
   .lyrics::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
-  .lyric{padding:9px 11px;border-radius:9px;font-size:16px;line-height:1.35;color:var(--ink-dim);
-    cursor:pointer;border:1px solid transparent}
-  .lyric.active{background:var(--panel2);color:var(--ink);border-color:var(--line)}
-  .lyric.playing{background:rgba(90,209,200,.14);color:#fff;border-color:rgba(90,209,200,.4)}
-  .lyric.done{color:var(--ink-faint)} .lyric.done::after{content:" ✓";color:var(--ok)}
+  .lyric{padding:7px 11px;font-size:16px;line-height:1.4;color:var(--ink)}
   .seg{display:flex;background:var(--panel2);border-radius:11px;padding:3px;gap:3px}
   .seg button{flex:1;background:transparent;padding:8px 0;font-size:13px;font-family:var(--mono);color:var(--ink-dim)}
   .seg button.on{background:var(--panel);color:var(--ink)}
@@ -149,6 +145,7 @@
     <button class="playref" id="abRef" disabled></button>
     <button class="playyou" id="abYou" disabled></button>
   </div>
+  <div id="recStatus" class="hint" style="margin-top:8px;min-height:16px"></div>
   <div id="pitchBox" style="margin-top:12px;display:none">
     <div class="pitchlegend">
       <span><span class="dot ref"></span><span data-i18n="leg_ref"></span></span>
@@ -293,23 +290,13 @@ $("refFile").addEventListener("change",async e=>{const f=e.target.files[0];if(f)
   for(const n of ["reference.m4a","reference.mp3","reference.wav","reference.ogg"]){
     try{const r=await fetch(n);if(r.ok){loadRef(await r.arrayBuffer());break;}}catch(_){}
   }
-  let syncLoaded=false;
-  try{const r=await fetch("sync.json");if(r.ok){
-    const arr=await r.json();
-    const txt=arr.map(o=>o.line).join("\n"); localStorage.setItem(LS_TXT,txt);
-    lines=txt.split("\n"); syncMap={};
-    let li=0; arr.forEach(o=>{while(li<lines.length&&!lines[li].trim())li++; if(li<lines.length){syncMap[li]=o.t;li++;}});
-    saveSync(); applyLang(); syncLoaded=true;
-  }}catch(_){}
-  // plain lyrics file — load whenever present (repo is the source of truth); sync.json wins if present
-  if(!syncLoaded){
-    for(const n of ["reference.txt","lyrics.txt"]){
-      try{const r=await fetch(n,{cache:"no-store"});if(r.ok){
-        const txt=(await r.text()).replace(/\r/g,"");
-        if(txt.trim()){localStorage.setItem(LS_TXT,txt); lines=txt.split("\n"); applyLang();}
-        break;
-      }}catch(_){}
-    }
+  // load lyrics text from the repo (read-only display)
+  for(const n of ["reference.txt","lyrics.txt"]){
+    try{const r=await fetch(n,{cache:"no-store"});if(r.ok){
+      const txt=(await r.text()).replace(/\r/g,"");
+      if(txt.trim()){localStorage.setItem(LS_TXT,txt); lines=txt.split("\n"); applyLang();}
+      break;
+    }}catch(_){}
   }
 })();
 
@@ -352,7 +339,7 @@ function setCursor(){if(!refBuf)return;const c=$("cur");c.style.display="block";
   c.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";}
 function updTransportBtn(){$("tPlay").textContent=transporting?"■":"▶";}
 function stopRef(){if(refSrc){try{refSrc.stop()}catch(_){}refSrc=null;}
-  if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";clearPlaying();
+  if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";
   transporting=false;updTransportBtn();if(refBuf)setCursor();}
 /* ---- transport: free seek over whole song ---- */
 function transportPlay(from){
@@ -363,7 +350,7 @@ function transportPlay(from){
   $("cur").style.display="none";
   const t0=ctx().currentTime,start=playPos,head=$("head");head.style.display="block";
   const tick=()=>{playPos=start+(ctx().currentTime-t0);
-    head.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";highlightPlaying(playPos);
+    head.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";
     if(playPos<refBuf.duration&&transporting)headRAF=requestAnimationFrame(tick);
     else{if(playPos>=refBuf.duration)playPos=0;stopRef();}};
   tick();
@@ -388,11 +375,10 @@ function playRegion(after){
   const t0=ctx().currentTime,head=$("head");head.style.display="block";
   const tick=()=>{let e=(ctx().currentTime-t0)*speed;if(loop)e=e%dur;
     const abs=off+e;const p=abs/refBuf.duration;head.style.left=px(Math.min(p,regB))+"px";
-    highlightPlaying(abs);
     if(loop||e<dur)headRAF=requestAnimationFrame(tick);
-    else{head.style.display="none";clearPlaying();if(after)after();}};
+    else{head.style.display="none";if(after)after();}};
   tick();
-  if(!loop)s.onended=()=>{if(refSrc===s){head.style.display="none";clearPlaying();if(after)after();}};
+  if(!loop)s.onended=()=>{if(refSrc===s){head.style.display="none";if(after)after();}};
 }
 $("playRef").addEventListener("click",()=>playRegion());
 $("loopBtn").addEventListener("click",()=>{loop=!loop;
@@ -403,30 +389,34 @@ $("speed").addEventListener("click",e=>{const b=e.target.closest("button");if(!b
 
 /* ---- record ---- */
 let mediaRec=null,chunks=[],youBuf=null,youBlob=null,youURL=null,youAudio=null,stream=null,armed=false;
-async function ensureMic(){if(stream)return stream;
-  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
-  return stream;}
+const RS=()=>$("recStatus");
+function status(m,c){RS().textContent=m;RS().style.color=c||"var(--ink-faint)";}
+async function ensureMic(){if(stream&&stream.active)return stream;
+  stream=await navigator.mediaDevices.getUserMedia({audio:true});return stream;}
 function pickMime(){for(const m of ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg",""])
   {if(m===""||(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)))return m;}return "";}
 $("recBtn").addEventListener("click",async()=>{
-  if(armed){try{mediaRec.stop()}catch(_){}return;}
-  if(!window.MediaRecorder){toast("MediaRecorder not supported");return;}
-  try{await ensureMic();}catch(e){toast(t("msg_micblock")+" ("+((e&&e.name)||"error")+")");return;}
+  if(armed){try{mediaRec.requestData()}catch(_){}try{mediaRec.stop()}catch(_){}return;}
+  stopRef(); // make sure the original isn't playing into the mic
+  if(!window.MediaRecorder){status("MediaRecorder not supported in this browser","var(--hot)");return;}
+  status(LANG==="ja"?"マイクを準備中…":"Starting mic…");
+  try{await ensureMic();}
+  catch(e){status((LANG==="ja"?"マイク不可: ":"Mic error: ")+((e&&e.name)||"error")+(LANG==="ja"?"（鍵アイコン→マイクを許可）":" (lock icon → allow mic)"),"var(--hot)");return;}
   chunks=[];const mm=pickMime();
   try{mediaRec=mm?new MediaRecorder(stream,{mimeType:mm}):new MediaRecorder(stream);}
   catch(e){mediaRec=new MediaRecorder(stream);}
   mediaRec.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data);};
   mediaRec.onstop=async()=>{armed=false;const b=$("recBtn");b.classList.remove("armed");b.textContent=t("rec");
-    if(!chunks.length){toast(t("msg_recfail"));return;}
+    if(!chunks.length){status(LANG==="ja"?"録音できませんでした（音声なし）":"No audio captured — check mic permission","var(--hot)");return;}
     youBlob=new Blob(chunks,{type:mediaRec.mimeType||"audio/webm"});
     if(youURL)URL.revokeObjectURL(youURL);youURL=URL.createObjectURL(youBlob);
     $("playYou").disabled=false;$("abRef").disabled=false;$("abYou").disabled=false;
-    toast(t("msg_got"));
+    status((LANG==="ja"?"保存しました ✓ ":"Saved ✓ ")+Math.round(youBlob.size/1024)+" KB","var(--ok)");
     try{youBuf=await ctx().decodeAudioData(await youBlob.arrayBuffer());drawPitch();}
     catch(e){youBuf=null;}   // playback still works via the audio element; pitch just unavailable
   };
-  mediaRec.start();armed=true;const b=$("recBtn");b.classList.add("armed");b.textContent=t("stop");
-  playRegion();
+  mediaRec.start(250);armed=true;const b=$("recBtn");b.classList.add("armed");b.textContent=t("stop");
+  status(LANG==="ja"?"● 録音中… もう一度押して停止":"● Recording… press again to stop","var(--hot)");
 });
 /* ---- play her take (blob URL = robust on desktop Chrome) ---- */
 function playYou(){if(!youURL)return;ctx().resume();
@@ -470,33 +460,15 @@ function drawPitch(){if(!refBuf||!youBuf)return;
 }
 
 /* ============ LYRICS + SYNC ============ */
-const LS_TXT="phraselab_lyrics",LS_DONE="phraselab_done",LS_LINE="phraselab_line",LS_SYNC="phraselab_sync";
-let lines=[],doneSet=new Set(JSON.parse(localStorage.getItem(LS_DONE)||"[]"));
-let activeLine=parseInt(localStorage.getItem(LS_LINE)||"-1");
-let syncMap=JSON.parse(localStorage.getItem(LS_SYNC)||"null"); // {lineIndex: seconds}
-let syncing=false, syncCursor=-1, syncT0=0;
-function saveSync(){localStorage.setItem(LS_SYNC,JSON.stringify(syncMap));}
-
+const LS_TXT="phraselab_lyrics";
+let lines=[];
 function renderLyrics(){
   const v=$("lyricView");v.innerHTML="";
   if(!lines.length)return;
-  lines.forEach((ln,i)=>{if(!ln.trim())return;
-    const d=document.createElement("div");
-    d.className="lyric"+(i===activeLine?" active":"");
-    d.dataset.i=i;d.textContent=ln;
-    d.onclick=()=>{activeLine=i;localStorage.setItem(LS_LINE,i);renderLyrics();};
+  lines.forEach(ln=>{if(!ln.trim())return;
+    const d=document.createElement("div");d.className="lyric";d.textContent=ln;
     v.appendChild(d);});
 }
-let _lastCur=-1;
-function highlightPlaying(absT){
-  if(!syncMap)return;const keys=Object.keys(syncMap).map(Number).sort((a,b)=>a-b);
-  let cur=-1;for(const k of keys){if(syncMap[k]<=absT+0.05)cur=k;else break;}
-  document.querySelectorAll(".lyric").forEach(el=>el.classList.toggle("playing",+el.dataset.i===cur));
-  if(cur!==_lastCur){_lastCur=cur;const el=document.querySelector('.lyric.playing');
-    if(el)el.scrollIntoView({block:"center",behavior:"smooth"});}
-}
-function clearPlaying(){document.querySelectorAll(".lyric.playing").forEach(el=>el.classList.remove("playing"));}
-
 (function init(){const x=localStorage.getItem(LS_TXT);
   if(x)lines=x.split("\n");
   applyLang();})();
