@@ -69,6 +69,10 @@
   .panel h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin:0 0 7px;font-weight:600;
     display:flex;align-items:center;gap:6px;color:var(--ink-dim)}
   .panel canvas{height:74px;background:var(--bg)}
+  .wavemini{position:relative}
+  .minihead{position:absolute;top:0;bottom:0;width:2px;background:var(--hot);left:0;display:none}
+  .meter{height:9px;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .meter > i{display:block;height:100%;width:0%;background:var(--ok);border-radius:6px}
   .panel .prow{display:flex;gap:6px;margin-top:8px}
   .panel .prow button{flex:1;padding:9px 0;font-size:13px}
   .panel.empty-state canvas{opacity:.3}
@@ -122,6 +126,12 @@
       </div>
     </div>
     <div class="meta"><span id="regLabel"></span></div>
+    <div class="row" id="zoomRow" style="margin-top:8px">
+      <button class="ghost" id="panL" style="flex:1">◀</button>
+      <button class="ghost" id="zoomOut" style="flex:1">－</button>
+      <button class="ghost" id="zoomIn" style="flex:1">＋</button>
+      <button class="ghost" id="panR" style="flex:1">▶</button>
+    </div>
     <div class="row" id="transport" style="margin-top:10px">
       <button class="ghost" id="tBack" style="flex:0 0 66px">−10s</button>
       <button class="playref" id="tPlay" style="flex:1;font-size:16px">▶</button>
@@ -142,12 +152,13 @@
   <div class="row">
     <button class="rec" id="recBtn" disabled></button>
   </div>
+  <div class="meter" id="micMeter" style="margin-top:8px;display:none"><i id="micLevel"></i></div>
   <div id="recStatus" style="margin-top:8px;min-height:18px;font-size:13px;font-weight:600;
     padding:8px 10px;border-radius:9px;background:var(--panel2);text-align:center;color:var(--ink-faint)"></div>
   <div class="panels">
     <div class="panel" id="clipPanel">
       <h3><span class="dot ref"></span><span data-i18n="clip_h"></span></h3>
-      <canvas id="clipWave" height="74"></canvas>
+      <div class="wavemini"><canvas id="clipWave" height="74"></canvas><div class="minihead" id="clipHead"></div></div>
       <div class="prow">
         <button class="playref" id="clipPlay">▶</button>
         <button class="ghost" id="clipLoopBtn" data-i18n="loop_off"></button>
@@ -158,7 +169,7 @@
     </div>
     <div class="panel empty-state" id="takePanel">
       <h3><span class="dot you"></span><span data-i18n="take_h"></span></h3>
-      <canvas id="takeWave" height="74"></canvas>
+      <div class="wavemini"><canvas id="takeWave" height="74"></canvas><div class="minihead" id="takeHead"></div></div>
       <div class="prow">
         <button class="playyou" id="takePlay" disabled>▶</button>
         <button class="ghost" id="takeLoopBtn" disabled data-i18n="loop_off"></button>
@@ -200,7 +211,7 @@ ja:{
   msg_recfail:"録音を処理できませんでした",
   help:`<b>使い方</b>
   <ol>
-    <li><b>上の波形</b>で練習する場所を探す。タップでその位置から再生、−10s/+10sで移動、「全体／選択」で再生範囲を切替。</li>
+    <li><b>上の波形</b>で練習する場所を探す。タップでその位置から再生、−10s/+10sで移動、「全体／選択」で再生範囲を切替。＋/－で拡大・縮小、◀/▶で左右に移動。</li>
     <li>水色のつまみをドラッグして1行を囲む。囲んだ範囲は<b>左のクリップ</b>に表示されます。</li>
     <li><b>左（お手本）</b>の▶でそのフレーズを再生。リピートや速度（0.6/0.8/1×）で練習。</li>
     <li><b>録音</b>を押して自分の声を録る（お手本は流れません。ヘッドホン推奨）。もう一度押して停止。</li>
@@ -225,7 +236,7 @@ en:{
   msg_recfail:"Couldn't process recording",
   help:`<b>How to practice</b>
   <ol>
-    <li>Use the <b>top waveform</b> to find the spot — tap to play from there, −10s/+10s to move, and the <b>All / Sel</b> toggle to play the whole song or just the selection.</li>
+    <li>Use the <b>top waveform</b> to find the spot — tap to play from there, −10s/+10s to move, and the <b>All / Sel</b> toggle to play the whole song or just the selection. ＋/－ zoom in/out, ◀/▶ pan.</li>
     <li>Drag the teal handles to box one line. The boxed part shows in the <b>left clip</b>.</li>
     <li><b>Left (original):</b> press ▶ to hear the phrase; use Repeat and 0.6/0.8/1× speed to drill it.</li>
     <li><b>Record</b> your voice (the original does not play — use headphones). Press again to stop.</li>
@@ -260,7 +271,7 @@ let playPos=0, refMode="", clipLoop=false, topMode="all";
 async function loadRef(arrbuf){
   try{ refBuf=await ctx().decodeAudioData(arrbuf); }
   catch(e){ toast(t("msg_badaudio")); return; }
-  regA=0; regB=1;
+  regA=0; regB=1; viewStart=0; viewLen=1;
   $("noRef").style.display="none"; $("refUI").style.display="block"; $("recBtn").disabled=false;
   drawWave(); layoutHandles(); updRegLabel(); drawClip(); playPos=0; setCursor(); updTransportBtn(); toast(t("msg_loaded"));
 }
@@ -281,29 +292,34 @@ $("refFile").addEventListener("change",async e=>{const f=e.target.files[0];if(f)
   }
 })();
 
-/* ---- waveform ---- */
+/* ---- waveform (with zoom view) ---- */
+let viewStart=0, viewLen=1;            // visible window as fractions of the song
 const wave=$("wave");
 function drawWave(){
   const dpr=devicePixelRatio||1,w=wave.clientWidth,h=wave.clientHeight;
   wave.width=w*dpr;wave.height=h*dpr;const g=wave.getContext("2d");g.scale(dpr,dpr);
   g.clearRect(0,0,w,h); if(!refBuf)return;
-  const data=refBuf.getChannelData(0),step=Math.max(1,Math.floor(data.length/w));
+  const data=refBuf.getChannelData(0);
+  const s0=Math.floor(viewStart*data.length),s1=Math.floor((viewStart+viewLen)*data.length);
+  const span=Math.max(1,s1-s0),step=Math.max(1,Math.floor(span/w));
   g.strokeStyle="#5b6275";g.lineWidth=1;g.beginPath();
-  for(let x=0;x<w;x++){let min=1,max=-1;
-    for(let i=0;i<step;i++){const v=data[x*step+i]||0;if(v<min)min=v;if(v>max)max=v;}
+  for(let x=0;x<w;x++){let min=1,max=-1;const base=s0+x*step;
+    for(let i=0;i<step;i++){const v=data[base+i]||0;if(v<min)min=v;if(v>max)max=v;}
     g.moveTo(x,(1-(max*0.9+1)/2)*h);g.lineTo(x,(1-(min*0.9+1)/2)*h);}
   g.stroke();
 }
 /* ---- handles ---- */
-const handles=$("handles"); const px=p=>p*handles.clientWidth;
+const handles=$("handles");
+const px=p=>((p-viewStart)/viewLen)*handles.clientWidth;   // song-fraction -> pixel within view
+const xToFrac=x=>Math.max(0,Math.min(1,viewStart+(x/handles.clientWidth)*viewLen));
 function layoutHandles(){$("hA").style.left=px(regA)+"px";$("hB").style.left=px(regB)+"px";
-  const r=$("region");r.style.left=px(regA)+"px";r.style.width=px(regB-regA)+"px";}
+  const r=$("region");r.style.left=px(regA)+"px";r.style.width=(px(regB)-px(regA))+"px";}
 function updRegLabel(){if(!refBuf)return;const d=refBuf.duration;
   $("regLabel").textContent=(LANG==="ja"?"フレーズ ":"phrase ")+(regA*d).toFixed(2)+"–"+(regB*d).toFixed(2)+"s";}
 function dragHandle(el,isA){
   const move=ev=>{const c=ev.touches?ev.touches[0]:ev,rect=handles.getBoundingClientRect();
-    let p=(c.clientX-rect.left)/rect.width;p=Math.max(0,Math.min(1,p));
-    if(isA)regA=Math.min(p,regB-0.01);else regB=Math.max(p,regA+0.01);
+    let f=xToFrac(c.clientX-rect.left);
+    if(isA)regA=Math.min(f,regB-0.005);else regB=Math.max(f,regA+0.005);
     layoutHandles();updRegLabel();drawClip();};
   const up=()=>{["touchmove","mousemove"].forEach(e=>document.removeEventListener(e,move));
     ["touchend","mouseup"].forEach(e=>document.removeEventListener(e,up));};
@@ -314,6 +330,23 @@ function dragHandle(el,isA){
 }
 dragHandle($("hA"),true);dragHandle($("hB"),false);
 addEventListener("resize",()=>{if(refBuf){drawWave();layoutHandles();drawClip();}if(youBuf)drawTake();});
+
+/* ---- zoom / pan on the top waveform ---- */
+function applyView(){drawWave();layoutHandles();if(refMode!=="transport")setCursor();}
+function zoomAt(center,factor){
+  let nl=Math.min(1,Math.max(0.02,viewLen*factor));
+  let ns=Math.min(1-nl,Math.max(0,center-nl/2));
+  if(nl>=1){ns=0;nl=1;}
+  viewStart=ns;viewLen=nl;applyView();}
+function panBy(frac){if(viewLen>=1)return;
+  viewStart=Math.min(1-viewLen,Math.max(0,viewStart+frac*viewLen));applyView();}
+function followView(p){if(viewLen>=1)return;
+  if(p<viewStart||p>viewStart+viewLen){
+    viewStart=Math.min(1-viewLen,Math.max(0,p-viewLen*0.1));drawWave();layoutHandles();}}
+$("zoomIn").addEventListener("click",()=>{if(refBuf)zoomAt(viewStart+viewLen/2,1/1.7);});
+$("zoomOut").addEventListener("click",()=>{if(refBuf)zoomAt(viewStart+viewLen/2,1.7);});
+$("panL").addEventListener("click",()=>panBy(-0.6));
+$("panR").addEventListener("click",()=>panBy(0.6));
 
 /* ---- small-panel waveform drawer ---- */
 function drawInto(cv,ch,s,e){
@@ -339,7 +372,7 @@ function setCursor(){if(!refBuf)return;const c=$("cur");c.style.display="block";
 function updTransportBtn(){$("tPlay").textContent=refMode?"■":"▶";}
 function updClipBtn(){$("clipPlay").textContent=refMode==="clip"?"■":"▶";}
 function stopRef(){if(refSrc){try{refSrc.stop()}catch(_){}refSrc=null;}
-  if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";
+  if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";$("clipHead").style.display="none";
   refMode="";updTransportBtn();updClipBtn();if(refBuf)setCursor();}
 function transportPlay(from){
   if(!refBuf)return;stopRef();ctx().resume();
@@ -349,6 +382,7 @@ function transportPlay(from){
   $("cur").style.display="none";
   const t0=ctx().currentTime,start=playPos,head=$("head");head.style.display="block";
   const tick=()=>{playPos=start+(ctx().currentTime-t0);
+    followView(playPos/refBuf.duration);
     head.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";
     if(playPos<refBuf.duration&&refMode==="transport")headRAF=requestAnimationFrame(tick);
     else{if(playPos>=refBuf.duration)playPos=0;stopRef();}};
@@ -366,8 +400,8 @@ $("topMode").addEventListener("click",e=>{const b=e.target.closest("button");if(
 $("tBack").addEventListener("click",()=>seekBy(-10));
 $("tFwd").addEventListener("click",()=>seekBy(10));
 wave.addEventListener("click",e=>{if(!refBuf)return;
-  const rect=wave.getBoundingClientRect();let r=(e.clientX-rect.left)/rect.width;
-  r=Math.max(0,Math.min(1,r));transportPlay(r*refBuf.duration);});
+  const rect=wave.getBoundingClientRect();const f=xToFrac(e.clientX-rect.left);
+  transportPlay(f*refBuf.duration);});
 
 /* ---- LEFT panel: play the selected clip ---- */
 function playClip(){
@@ -376,9 +410,11 @@ function playClip(){
   const s=ctx().createBufferSource();s.buffer=refBuf;s.playbackRate.value=speed;
   s.connect(ctx().destination);s.loop=clipLoop;s.loopStart=off;s.loopEnd=regB*refBuf.duration;
   s.start(0,off,clipLoop?undefined:dur);refSrc=s;refMode="clip";
-  const t0=ctx().currentTime,head=$("head");head.style.display="block";
+  const t0=ctx().currentTime,head=$("head"),ch=$("clipHead"),cw=$("clipWave");
+  head.style.display="block";ch.style.display="block";
   const tick=()=>{let e=(ctx().currentTime-t0)*speed;if(clipLoop)e=e%dur;
     const p=(off+e)/refBuf.duration;head.style.left=px(Math.min(p,regB))+"px";
+    ch.style.left=(Math.min(1,e/dur)*cw.clientWidth)+"px";
     if((clipLoop||e<dur)&&refMode==="clip")headRAF=requestAnimationFrame(tick);
     else if(!clipLoop)stopRef();};
   tick();
@@ -402,6 +438,18 @@ async function ensureMic(){if(stream&&stream.active)return stream;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     const err=new Error("insecure");err.name="InsecureContext";throw err;}
   stream=await navigator.mediaDevices.getUserMedia({audio:true});return stream;}
+let micAnalyser=null,micSource=null;
+function startMeter(){
+  try{if(!micAnalyser){micSource=ctx().createMediaStreamSource(stream);
+    micAnalyser=ctx().createAnalyser();micAnalyser.fftSize=512;micSource.connect(micAnalyser);}}catch(_){return;}
+  const buf=new Uint8Array(micAnalyser.fftSize);$("micMeter").style.display="block";
+  const tick=()=>{if(!armed){$("micMeter").style.display="none";$("micLevel").style.width="0%";return;}
+    micAnalyser.getByteTimeDomainData(buf);let peak=0;
+    for(let i=0;i<buf.length;i++){const v=Math.abs(buf[i]-128);if(v>peak)peak=v;}
+    const lvl=Math.min(100,Math.round(peak/128*180));
+    const el=$("micLevel");el.style.width=lvl+"%";el.style.background=lvl<3?"var(--hot)":"var(--ok)";
+    requestAnimationFrame(tick);};
+  tick();}
 function pickMime(){for(const m of ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg",""])
   {if(m===""||(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)))return m;}return "";}
 $("recBtn").addEventListener("click",async()=>{
@@ -425,27 +473,34 @@ $("recBtn").addEventListener("click",async()=>{
     catch(e){youBuf=null;drawInto($("takeWave"),null,0,0);}
   };
   mediaRec.start(250);armed=true;const b=$("recBtn");b.classList.add("armed");b.textContent=t("stop");
+  startMeter();
   status(LANG==="ja"?"● 録音中… もう一度押して停止":"● Recording... press again to stop","var(--hot)");
 });
 
 /* ---- RIGHT panel: play the recorded take (independent) ---- */
 let takeSrc=null;
+function takeProgress(startT){
+  const dur=youBuf?youBuf.duration:0,th=$("takeHead"),tw=$("takeWave");th.style.display="block";
+  const tick=()=>{if(!takePlaying){th.style.display="none";return;}
+    let e=ctx().currentTime-startT;let f=dur?(takeLoop?(e%dur)/dur:Math.min(1,e/dur)):0;
+    th.style.left=(f*tw.clientWidth)+"px";requestAnimationFrame(tick);};
+  tick();}
 function stopTake(){
   if(takeSrc){try{takeSrc.stop()}catch(_){}takeSrc=null;}
   if(youAudio){try{youAudio.pause()}catch(_){}}
-  takePlaying=false;$("takePlay").textContent="▶";}
+  takePlaying=false;$("takePlay").textContent="▶";$("takeHead").style.display="none";}
 function playTake(){
   if(!youURL&&!youBuf)return;ctx().resume();
   if(youBuf){ // decoded PCM = most reliable on desktop Chrome
     if(takeSrc){try{takeSrc.stop()}catch(_){}}
     const s=ctx().createBufferSource();s.buffer=youBuf;s.loop=takeLoop;s.connect(ctx().destination);
-    s.onended=()=>{if(takeSrc===s&&!takeLoop){takePlaying=false;$("takePlay").textContent="▶";takeSrc=null;}};
-    s.start();takeSrc=s;takePlaying=true;$("takePlay").textContent="■";return;
+    s.onended=()=>{if(takeSrc===s&&!takeLoop){takePlaying=false;$("takePlay").textContent="▶";$("takeHead").style.display="none";takeSrc=null;}};
+    s.start();takeSrc=s;takePlaying=true;$("takePlay").textContent="■";takeProgress(ctx().currentTime);return;
   }
   // fallback: element playback
   if(youAudio){try{youAudio.pause()}catch(_){}}
   youAudio=new Audio(youURL);youAudio.loop=takeLoop;
-  youAudio.onended=()=>{if(!takeLoop){takePlaying=false;$("takePlay").textContent="▶";}};
+  youAudio.onended=()=>{if(!takeLoop){takePlaying=false;$("takePlay").textContent="▶";$("takeHead").style.display="none";}};
   youAudio.play().then(()=>{takePlaying=true;$("takePlay").textContent="■";})
     .catch(()=>status(LANG==="ja"?"再生できません":"Can't play take","var(--hot)"));}
 $("takePlay").addEventListener("click",()=>{if(takePlaying)stopTake();else playTake();});
