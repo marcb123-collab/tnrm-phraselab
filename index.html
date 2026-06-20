@@ -46,6 +46,10 @@
   .handles{position:absolute;inset:0;pointer-events:none}
   .handle{position:absolute;top:0;bottom:0;width:30px;margin-left:-15px;pointer-events:auto;touch-action:none;cursor:ew-resize}
   .handle::before{content:"";position:absolute;left:14px;top:0;bottom:0;width:2px;background:var(--ref)}
+  .handle.pinL::after,.handle.pinR::after{content:"";position:absolute;top:calc(50% - 5px);
+    width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent}
+  .handle.pinL::after{left:3px;border-right:7px solid var(--ref)}
+  .handle.pinR::after{right:3px;border-left:7px solid var(--ref)}
   .region{position:absolute;top:0;bottom:0;background:rgba(90,209,200,.10);
     border-left:1px solid rgba(90,209,200,.4);border-right:1px solid rgba(90,209,200,.4)}
   .playhead{position:absolute;top:0;bottom:0;width:1.5px;background:var(--hot);left:0;display:none}
@@ -77,6 +81,17 @@
   .panel .prow button{flex:1;padding:9px 0;font-size:13px}
   .panel.empty-state canvas{opacity:.3}
   .empty{color:var(--ink-faint);font-size:13px;text-align:center;padding:18px 6px}
+  .scorerow{display:flex;align-items:center;gap:13px;padding:12px 0;border-top:1px solid var(--line)}
+  .scorerow:first-child{border-top:0}
+  .scorenum{font-family:var(--mono);font-size:27px;font-weight:700;width:58px;text-align:right;line-height:1}
+  .scoremeta{flex:1;min-width:0}
+  .scorelabel{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);font-weight:600}
+  .scoreline{font-size:13px;color:var(--ink);margin-top:3px;line-height:1.4}
+  .confwrap{display:flex;align-items:center;gap:6px;margin-top:6px}
+  .confbar{flex:1;height:5px;background:var(--panel2);border-radius:3px;overflow:hidden}
+  .confbar > i{display:block;height:100%;border-radius:3px}
+  .conftext{font-size:10px;color:var(--ink-faint);letter-spacing:.04em}
+  .demoted .scorenum{color:var(--ink-faint)}
   .syncbig{background:var(--ref);color:#06231f;font-size:17px;padding:16px;width:100%;margin-top:8px;display:none}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#000;color:#fff;
     padding:10px 16px;border-radius:30px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
@@ -178,6 +193,14 @@
   </div>
 </div>
 
+<!-- SCORE -->
+<div class="card">
+  <h2><span class="dot" style="background:var(--ref)"></span><span data-i18n="score_h"></span></h2>
+  <button class="playref" id="scoreBtn" disabled data-i18n="score_btn" style="width:100%"></button>
+  <div id="scoreOut"></div>
+  <div id="scoreHint" class="hint" data-i18n="score_idle"></div>
+</div>
+
 <!-- LYRICS -->
 <div class="card">
   <h2 data-i18n="lyrics_h"></h2>
@@ -206,6 +229,8 @@ ja:{
   transport_hint:"波形をタップでその位置から再生。−10s/+10sで移動。「全体／選択」で再生範囲を切替。",
   practice_h:"練習", take_h:"あなたの録音", clip_h:"お手本クリップ", loop_off:"リピート", loop_on:"リピート中",
   play_all:"全体", play_sel:"選択範囲", lyrics_h:"歌詞", lyrics_hint:"歌詞をスクロールして見られます。",
+  score_h:"採点", score_btn:"このテイクを採点", score_idle:"フレーズを録音してから採点できます。", score_need:"先に録音してください", score_analyzing:"分析中…",
+  rhythm:"リズム", intonation:"イントネーション", melody:"メロディ", conf_low:"信頼度 低", conf_med:"信頼度 中", conf_high:"信頼度 高",
   rec:"● 録音", stop:"■ 停止",
   msg_loaded:"お手本を読み込みました", msg_badaudio:"この音源を読み込めませんでした",
   msg_recfail:"録音を処理できませんでした",
@@ -231,6 +256,8 @@ en:{
   transport_hint:"Tap the waveform to play from there. −10s/+10s to move. All / Sel switches what plays.",
   practice_h:"Practice", take_h:"Your take", clip_h:"Original clip", loop_off:"Repeat", loop_on:"Repeating",
   play_all:"All", play_sel:"Selection", lyrics_h:"Lyrics", lyrics_hint:"Scroll to read the lyrics.",
+  score_h:"Score", score_btn:"Score this take", score_idle:"Record a take of the boxed phrase, then score it.", score_need:"Record a take first", score_analyzing:"Analyzing…",
+  rhythm:"Rhythm", intonation:"Intonation", melody:"Melody", conf_low:"low confidence", conf_med:"medium confidence", conf_high:"high confidence",
   rec:"● Record", stop:"■ Stop",
   msg_loaded:"Reference loaded", msg_badaudio:"Couldn't read that audio file",
   msg_recfail:"Couldn't process recording",
@@ -312,8 +339,11 @@ function drawWave(){
 const handles=$("handles");
 const px=p=>((p-viewStart)/viewLen)*handles.clientWidth;   // song-fraction -> pixel within view
 const xToFrac=x=>Math.max(0,Math.min(1,viewStart+(x/handles.clientWidth)*viewLen));
-function layoutHandles(){$("hA").style.left=px(regA)+"px";$("hB").style.left=px(regB)+"px";
-  const r=$("region");r.style.left=px(regA)+"px";r.style.width=(px(regB)-px(regA))+"px";}
+function layoutHandles(){const W=handles.clientWidth;
+  const ra=px(regA),rb=px(regB),ax=Math.max(0,Math.min(W,ra)),bx=Math.max(0,Math.min(W,rb));
+  $("hA").style.left=ax+"px";$("hB").style.left=bx+"px";
+  $("hA").classList.toggle("pinL",ra<-0.5);$("hB").classList.toggle("pinR",rb>W+0.5);
+  const r=$("region");r.style.left=ax+"px";r.style.width=Math.max(0,bx-ax)+"px";}
 function updRegLabel(){if(!refBuf)return;const d=refBuf.duration;
   $("regLabel").textContent=(LANG==="ja"?"フレーズ ":"phrase ")+(regA*d).toFixed(2)+"–"+(regB*d).toFixed(2)+"s";}
 function dragHandle(el,isA){
@@ -468,6 +498,7 @@ $("recBtn").addEventListener("click",async()=>{
     youBlob=new Blob(chunks,{type:mediaRec.mimeType||"audio/webm"});
     if(youURL)URL.revokeObjectURL(youURL);youURL=URL.createObjectURL(youBlob);
     $("takePlay").disabled=false;$("takeLoopBtn").disabled=false;$("takePanel").classList.remove("empty-state");
+    $("scoreBtn").disabled=false;$("scoreHint").textContent="";
     status((LANG==="ja"?"保存しました ✓ ":"Saved ✓ ")+Math.round(youBlob.size/1024)+" KB","var(--ok)");
     try{youBuf=await ctx().decodeAudioData(await youBlob.arrayBuffer());drawTake();}
     catch(e){youBuf=null;drawInto($("takeWave"),null,0,0);}
@@ -510,6 +541,159 @@ $("takeLoopBtn").addEventListener("click",()=>{takeLoop=!takeLoop;
   if(takeSrc)takeSrc.loop=takeLoop;if(youAudio)youAudio.loop=takeLoop;});
 
 ["pointerdown","keydown","touchstart"].forEach(e=>document.addEventListener(e,()=>{try{ctx().resume()}catch(_){}},{passive:true}));
+
+/* ============ SCORE: rhythm / intonation / melody ============ */
+function sClamp(x,a,b){return Math.max(a,Math.min(b,x));}
+function sClamp01(x){return sClamp(x,0,1);}
+function jp(){return LANG==="ja";}
+
+// per-frame pitch (semitones) + clarity via normalized autocorrelation
+function framePitch(ch,start,len,sr){
+  let rms=0;for(let i=0;i<len;i++){const v=ch[start+i]||0;rms+=v*v;}
+  rms=Math.sqrt(rms/len);
+  if(rms<0.006)return {semi:null,clarity:0};
+  let c0=0;for(let i=0;i<len;i++){const v=ch[start+i]||0;c0+=v*v;}
+  const minLag=Math.floor(sr/600),maxLag=Math.floor(sr/90);
+  let bestLag=-1,best=0;
+  for(let lag=minLag;lag<maxLag;lag++){
+    let s=0;for(let i=0;i+lag<len;i++)s+=(ch[start+i]||0)*(ch[start+i+lag]||0);
+    const norm=s/(c0||1);
+    if(norm>best){best=norm;bestLag=lag;}
+  }
+  if(bestLag<=0||best<0.3)return {semi:null,clarity:best};
+  const f0=sr/bestLag;
+  return {semi:69+12*Math.log2(f0/440),clarity:best};
+}
+function features(ch,s0,s1,sr){
+  const win=Math.round(sr*0.04),hop=Math.round(sr*0.02);
+  const env=[],semi=[],cla=[];
+  for(let p=s0;p+win<s1;p+=hop){
+    let e=0;for(let i=0;i<win;i++){const v=ch[p+i]||0;e+=v*v;}
+    env.push(Math.sqrt(e/win));
+    const fp=framePitch(ch,p,win,sr);semi.push(fp.semi);cla.push(fp.clarity);
+  }
+  return {env,semi,cla};
+}
+function trimByEnergy(f){
+  let mx=1e-9;for(const v of f.env)if(v>mx)mx=v;const th=mx*0.12;
+  let a=0,b=f.env.length-1;
+  while(a<b&&f.env[a]<th)a++;while(b>a&&f.env[b]<th)b--;
+  return {env:f.env.slice(a,b+1),semi:f.semi.slice(a,b+1),cla:f.cla.slice(a,b+1)};
+}
+function capFrames(F,max){const n=F.env.length;if(n<=max)return F;const step=n/max;
+  const env=[],semi=[],cla=[];
+  for(let k=0;k<max;k++){const idx=Math.floor(k*step);env.push(F.env[idx]);semi.push(F.semi[idx]);cla.push(F.cla[idx]);}
+  return {env,semi,cla};}
+function norm01(arr){let mx=1e-9;for(const v of arr)if(v>mx)mx=v;return arr.map(v=>v/mx);}
+function dtw(a,b){
+  const n=a.length,m=b.length,INF=1e18,D=[];
+  for(let i=0;i<=n;i++)D.push(new Float64Array(m+1).fill(INF));
+  D[0][0]=0;
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){
+    const c=Math.abs(a[i-1]-b[j-1]);
+    D[i][j]=c+Math.min(D[i-1][j],D[i][j-1],D[i-1][j-1]);}
+  let i=n,j=m;const path=[];
+  while(i>0&&j>0){path.push([i-1,j-1]);
+    const dd=D[i-1][j-1],du=D[i-1][j],dl=D[i][j-1];
+    if(dd<=du&&dd<=dl){i--;j--;}else if(du<=dl)i--;else j--;}
+  path.reverse();return {cost:D[n][m],path};
+}
+function pearson(xs,ys){const n=xs.length;if(n<3)return 0;
+  let mx=0,my=0;for(let i=0;i<n;i++){mx+=xs[i];my+=ys[i];}mx/=n;my/=n;
+  let sxy=0,sxx=0,syy=0;
+  for(let i=0;i<n;i++){const dx=xs[i]-mx,dy=ys[i]-my;sxy+=dx*dy;sxx+=dx*dx;syy+=dy*dy;}
+  if(sxx<1e-9||syy<1e-9)return 0;return sxy/Math.sqrt(sxx*syy);}
+function smedian(a){if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;
+  return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+function sstd(a){if(a.length<2)return 0;const m=a.reduce((x,y)=>x+y,0)/a.length;
+  return Math.sqrt(a.reduce((s,v)=>s+(v-m)*(v-m),0)/a.length);}
+
+function analyze(){
+  if(!refBuf||!youBuf)return null;
+  const sr=refBuf.sampleRate;
+  const rs=Math.floor(regA*refBuf.length),re=Math.floor(regB*refBuf.length);
+  let R=capFrames(trimByEnergy(features(refBuf.getChannelData(0),rs,re,sr)),320);
+  let T=capFrames(trimByEnergy(features(youBuf.getChannelData(0),0,youBuf.length,youBuf.sampleRate)),320);
+  if(R.env.length<8||T.env.length<8)return {tooShort:true};
+  const {cost,path}=dtw(norm01(R.env),norm01(T.env));
+  const meanCost=cost/path.length;
+  const rp=[],tp=[],cl=[];
+  for(const pr of path){const i=pr[0],j=pr[1];
+    if(R.semi[i]!=null&&T.semi[j]!=null&&R.cla[i]>0.4&&T.cla[j]>0.4){
+      rp.push(R.semi[i]);tp.push(T.semi[j]);cl.push(Math.min(R.cla[i],T.cla[j]));}}
+  // rhythm
+  const rhythm=sClamp(Math.round(100*(1-meanCost/0.34)),0,100);
+  const L=path.length,rN=Math.max(1,R.env.length-1),tN=Math.max(1,T.env.length-1);
+  const segErr=[[0,L/3],[L/3,2*L/3],[2*L/3,L]].map(seg=>{let s=0,c=0;
+    for(let k=Math.floor(seg[0]);k<Math.floor(seg[1]);k++){const p=path[k];s+=(p[1]/tN)-(p[0]/rN);c++;}
+    return c?s/c:0;});
+  // intonation (shape) + melody (notes)
+  let intonation=0,corr=0,flat=false,melody=0,offset=0,medErr=99;
+  if(rp.length>=8){
+    corr=pearson(rp,tp);intonation=sClamp(Math.round(100*Math.max(0,corr)),0,100);
+    flat=sstd(tp)<0.6*sstd(rp);
+    const diffs=rp.map((r,k)=>r-tp[k]);offset=smedian(diffs);
+    const errs=rp.map((r,k)=>Math.abs((tp[k]+offset)-r));medErr=smedian(errs);
+    melody=sClamp(Math.round(100*(1-medErr/3)),0,100);}
+  // confidence from signal quality
+  let voiced=0;for(let i=0;i<T.semi.length;i++)if(T.semi[i]!=null&&T.cla[i]>0.4)voiced++;
+  const voicedT=voiced/Math.max(1,T.semi.length);
+  const avgCla=cl.length?cl.reduce((a,b)=>a+b,0)/cl.length:0;
+  const lenFac=sClamp01(T.env.length/40),pairFac=sClamp01(rp.length/24);
+  const cRhythm=sClamp01(lenFac*(1-sClamp01(meanCost/0.6)));
+  const cPitch=sClamp01(pairFac*avgCla*sClamp01(voicedT/0.5));
+  return {rhythm,intonation,melody,offset,corr,flat,segErr,
+    conf:{rhythm:cRhythm,intonation:cPitch,melody:cPitch}};
+}
+
+function confTier(c){return c<0.4?"low":c<0.7?"med":"high";}
+function rhythmLine(a){
+  const names=jp()?["最初","中間","最後"]:["the start","the middle","the end"];
+  let mi=0;for(let i=1;i<3;i++)if(Math.abs(a.segErr[i])>Math.abs(a.segErr[mi]))mi=i;
+  const e=a.segErr[mi];
+  if(a.rhythm>=82)return jp()?"タイミングはばっちり。":"Timing is solid.";
+  if(Math.abs(e)<0.03)return jp()?"タイミングはおおむね良好。":"Timing is mostly there.";
+  const dir=e>0?(jp()?"走り気味":"rushing"):(jp()?"もたり気味":"dragging");
+  return jp()?names[mi]+"で"+dir+"です。":"You're "+dir+" at "+names[mi]+".";
+}
+function intoLine(a){
+  if(a.intonation>=80)return jp()?"イントネーションの形がお手本によく合っています。":"Your intonation closely follows the reference.";
+  if(a.flat)return jp()?"お手本より平坦です。高い所を上げ、低い所を下げて。":"Flatter than the reference — lift the highs and drop the lows more.";
+  if(a.corr<0.2)return jp()?"上がり下がりがお手本とずれています。":"Your rise-and-fall drifts from the reference.";
+  return jp()?"イントネーションはまずまず。もう少し抑揚を。":"Intonation is close — push the rise and fall a bit more.";
+}
+function melodyLine(a){
+  if(a.melody>=80)return jp()?"音程（メロディ）はよく合っています。":"Your notes track the melody well.";
+  if(Math.abs(a.offset)>=9)return jp()?"オクターブ違いで歌っています（形が合えばOK）。":"You're singing in a different octave (fine if the shape matches).";
+  const semis=Math.round(a.offset);
+  if(Math.abs(semis)>=2)return jp()?"全体で約"+Math.abs(semis)+"半音ずれています。":"About "+Math.abs(semis)+" semitones off key overall.";
+  return jp()?"ところどころ音を外しています。":"A few notes drift off the melody.";
+}
+function numColor(s){return s>=80?"var(--ok)":s>=55?"#e7b84b":"var(--hot)";}
+function confColor(c){return c>=0.7?"var(--ok)":c>=0.4?"#e7b84b":"var(--hot)";}
+function scoreRow(label,score,conf,line,demoteLow){
+  const demoted=demoteLow&&conf<0.4;
+  const num=demoted?'<div class="scorenum">—</div>':'<div class="scorenum" style="color:'+numColor(score)+'">'+score+'</div>';
+  const lowMsg=jp()?"信頼度が低く採点できません（ボーカルのみの音源で再録音を）。":"Too low-confidence to score — use a clean vocal-only reference.";
+  return '<div class="scorerow'+(demoted?' demoted':'')+'">'+num+
+    '<div class="scoremeta"><div class="scorelabel">'+label+'</div>'+
+    '<div class="scoreline">'+(demoted?lowMsg:line)+'</div>'+
+    '<div class="confwrap"><div class="confbar"><i style="width:'+Math.round(conf*100)+'%;background:'+confColor(conf)+'"></i></div>'+
+    '<span class="conftext">'+t("conf_"+confTier(conf))+'</span></div></div></div>';
+}
+$("scoreBtn").addEventListener("click",()=>{
+  if(!youBuf){$("scoreHint").textContent=t("score_need");return;}
+  $("scoreHint").textContent=t("score_analyzing");$("scoreOut").innerHTML="";
+  setTimeout(()=>{
+    let a;try{a=analyze();}catch(err){$("scoreHint").textContent=String(err);return;}
+    if(!a||a.tooShort){$("scoreHint").textContent=jp()?"クリップが短すぎます。":"Clip too short to analyze.";return;}
+    $("scoreHint").textContent="";
+    $("scoreOut").innerHTML=
+      scoreRow(t("rhythm"),a.rhythm,a.conf.rhythm,rhythmLine(a),false)+
+      scoreRow(t("intonation"),a.intonation,a.conf.intonation,intoLine(a),false)+
+      scoreRow(t("melody"),a.melody,a.conf.melody,melodyLine(a),true);
+  },30);
+});
 
 /* ============ LYRICS + SYNC ============ */
 const LS_TXT="phraselab_lyrics";
