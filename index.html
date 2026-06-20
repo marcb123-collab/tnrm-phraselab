@@ -127,6 +127,10 @@
       <button class="playref" id="tPlay" style="flex:1;font-size:16px">▶</button>
       <button class="ghost" id="tFwd" style="flex:0 0 66px">+10s</button>
     </div>
+    <div class="seg" style="margin-top:8px" id="topMode">
+      <button data-m="all" class="on" data-i18n="play_all"></button>
+      <button data-m="sel" data-i18n="play_sel"></button>
+    </div>
     <p class="hint" data-i18n="transport_hint"></p>
     <p class="hint" data-i18n="drag_hint"></p>
   </div>
@@ -138,7 +142,8 @@
   <div class="row">
     <button class="rec" id="recBtn" disabled></button>
   </div>
-  <div id="recStatus" class="hint" style="margin-top:8px;min-height:16px"></div>
+  <div id="recStatus" style="margin-top:8px;min-height:18px;font-size:13px;font-weight:600;
+    padding:8px 10px;border-radius:9px;background:var(--panel2);text-align:center;color:var(--ink-faint)"></div>
   <div class="panels">
     <div class="panel" id="clipPanel">
       <h3><span class="dot ref"></span><span data-i18n="clip_h"></span></h3>
@@ -187,36 +192,22 @@ ja:{
   change:"音源を変える",
   play_phrase:"▶ フレーズを再生", loop:"リピート", on:"オン", off:"オフ",
   drag_hint:"水色のつまみをドラッグして練習する1行を囲みます。",
-  transport_hint:"波形をタップするとその位置から再生。▶/■で再生・停止、−10s/+10sで10秒戻る・進む。",
-  practice_h:"練習", take_h:"あなたの録音", clip_h:"お手本クリップ", loop_off:"リピート", loop_on:"リピート中", drag_hint:"水色のつまみをドラッグして練習する1行を囲みます。",
-  take_h:"あなたの録音", rec:"● 録音", stop:"■ 停止", play_mine:"▶ 自分のを再生",
-  hear_ref:"お手本を聴く", then_mine:"次に自分のを",
-  leg_ref:"お手本", leg_you:"あなた", leg_axis:"↑ 高い ・ → 時間",
-  pitch_hint:"オレンジの形を水色に合わせます。水色が上がっているのにオレンジが平らなら、音程が上がっていないサイン。そこを直しましょう。",
-  pitch_empty:"フレーズに合わせて録音すると、お手本の隣にあなたのピッチが表示されます。",
-  lyrics_h:"歌詞（読む用）", lyrics_ph:"ここに歌詞を貼り付け（1行ずつ）…",
-  save_lyrics:"歌詞を保存", mark_done:"この行をできた ✓", edit:"編集",
-  lyrics_hint:"歌詞をスクロールして見られます。行をタップすると場所を覚えておけます。",
-  sync_start:"歌詞を合わせる（タップ開始）", sync_tap:"行の頭でタップ", sync_done_btn:"合わせ直す",
-  sync_clear:"同期をクリア", sync_copy:"同期データをコピー",
+  transport_hint:"波形をタップでその位置から再生。−10s/+10sで移動。「全体／選択」で再生範囲を切替。",
+  practice_h:"練習", take_h:"あなたの録音", clip_h:"お手本クリップ", loop_off:"リピート", loop_on:"リピート中",
+  play_all:"全体", play_sel:"選択範囲", lyrics_h:"歌詞", lyrics_hint:"歌詞をスクロールして見られます。",
+  rec:"● 録音", stop:"■ 停止",
   msg_loaded:"お手本を読み込みました", msg_badaudio:"この音源を読み込めませんでした",
-  msg_micblock:"マイクがブロックされています（httpsと許可が必要）",
-  msg_got:"録音できました — 下で比べてください", msg_recfail:"録音を処理できませんでした",
-  msg_lyrsaved:"歌詞を保存しました", msg_tapfirst:"先に行をタップしてください",
-  msg_synced:"同期完了 — 歌詞をタップでそのフレーズへ", msg_synccleared:"同期をクリアしました",
-  msg_synccopied:"同期データをコピーしました", msg_addlyr:"先に歌詞を保存してください",
-  msg_nopitch:"はっきりした音程が検出できません — ボーカルのみの音源で試してください",
+  msg_recfail:"録音を処理できませんでした",
   help:`<b>使い方</b>
   <ol>
-    <li>お手本の音源を読み込む（<b>ボーカルのみ</b>の音源がベスト）。</li>
-    <li>歌詞を貼り付けて「歌詞を保存」。</li>
-    <li>（任意）<b>歌詞を合わせる</b>を押し、再生に合わせて各行の頭でタップ。以降は歌詞をタップするとそのフレーズに移動します。</li>
-    <li>水色のつまみをドラッグ、または同期した行をタップして1行を囲む。</li>
-    <li><b>録音</b>を押すとフレーズが流れるので一緒に歌う。終わったら停止。</li>
-    <li><b>お手本を聴く → 自分のを</b>で聴き比べ、オレンジのピッチを水色に合わせる。</li>
-    <li>うまくいったら「この行をできた ✓」。</li>
+    <li><b>上の波形</b>で練習する場所を探す。タップでその位置から再生、−10s/+10sで移動、「全体／選択」で再生範囲を切替。</li>
+    <li>水色のつまみをドラッグして1行を囲む。囲んだ範囲は<b>左のクリップ</b>に表示されます。</li>
+    <li><b>左（お手本）</b>の▶でそのフレーズを再生。リピートや速度（0.6/0.8/1×）で練習。</li>
+    <li><b>録音</b>を押して自分の声を録る（お手本は流れません。ヘッドホン推奨）。もう一度押して停止。</li>
+    <li><b>右（あなた）</b>の▶で自分の録音を再生。リピートも可。</li>
+    <li>左と右を交互に聴いて、発音とイントネーションを近づける。</li>
   </ol>
-  <b>コツ：</b>イントネーションの確認は1×で。マイクはhttpsのリンクと許可が必要です。Android Chrome推奨。`
+  <b>マイク：</b>httpsのリンク（github.io）で開き、許可してください。録音できない時は、アドレス左の鍵アイコン→マイク→許可→再読み込み。`
 },
 en:{
   tagline:"Listen · loop · record · compare — one phrase at a time",
@@ -226,36 +217,22 @@ en:{
   change:"change clip",
   play_phrase:"▶ Play phrase", loop:"Loop", on:"on", off:"off",
   drag_hint:"Drag the teal handles to box the line you want to practice.",
-  transport_hint:"Tap the waveform to play from there. ▶/■ to play/stop, −10s/+10s to jump back or ahead 10 seconds.",
-  practice_h:"Practice", take_h:"Your take", clip_h:"Original clip", loop_off:"Repeat", loop_on:"Repeating", drag_hint:"Drag the teal handles to box the line you want to practice.",
-  take_h:"Your take", rec:"● Record", stop:"■ Stop", play_mine:"▶ Play mine",
-  hear_ref:"Hear theirs", then_mine:"then mine",
-  leg_ref:"reference", leg_you:"you", leg_axis:"↑ higher · → time",
-  pitch_hint:"Match the orange shape to the teal one. Flat orange where teal rises = you're not lifting the note. Fix that.",
-  pitch_empty:"Record over a phrase and your pitch line appears next to the reference.",
-  lyrics_h:"Lyrics (reading aid)", lyrics_ph:"Paste the lyrics here, one line per line…",
-  save_lyrics:"Save lyrics", mark_done:"Mark this line ✓", edit:"Edit",
-  lyrics_hint:"Scroll to read the lyrics. Tap a line to keep your place.",
-  sync_start:"Sync lyrics (start tapping)", sync_tap:"Tap at line start", sync_done_btn:"Re-sync",
-  sync_clear:"Clear sync", sync_copy:"Copy sync data",
+  transport_hint:"Tap the waveform to play from there. −10s/+10s to move. All / Sel switches what plays.",
+  practice_h:"Practice", take_h:"Your take", clip_h:"Original clip", loop_off:"Repeat", loop_on:"Repeating",
+  play_all:"All", play_sel:"Selection", lyrics_h:"Lyrics", lyrics_hint:"Scroll to read the lyrics.",
+  rec:"● Record", stop:"■ Stop",
   msg_loaded:"Reference loaded", msg_badaudio:"Couldn't read that audio file",
-  msg_micblock:"Mic blocked — needs https + permission",
-  msg_got:"Got it — compare below", msg_recfail:"Couldn't process recording",
-  msg_lyrsaved:"Lyrics saved", msg_tapfirst:"Tap a line first",
-  msg_synced:"Synced — tap a line to jump to that phrase", msg_synccleared:"Sync cleared",
-  msg_synccopied:"Sync data copied", msg_addlyr:"Save lyrics first",
-  msg_nopitch:"No clear pitch detected — try a vocal-only reference",
+  msg_recfail:"Couldn't process recording",
   help:`<b>How to practice</b>
   <ol>
-    <li>Load a reference clip (a <b>vocal-only</b> file works best).</li>
-    <li>Paste the lyrics and Save.</li>
-    <li>(Optional) <b>Sync lyrics</b>: press it, then tap at the start of each line as it plays. After that, tapping a line jumps to that phrase.</li>
-    <li>Drag the teal handles, or tap a synced line, to box one line.</li>
-    <li>Press <b>Record</b> — the phrase plays so you sing along. Stop when done.</li>
-    <li><b>Hear theirs → then mine</b>, and match the orange pitch line to the teal.</li>
-    <li>When it's solid, mark the line ✓.</li>
+    <li>Use the <b>top waveform</b> to find the spot — tap to play from there, −10s/+10s to move, and the <b>All / Sel</b> toggle to play the whole song or just the selection.</li>
+    <li>Drag the teal handles to box one line. The boxed part shows in the <b>left clip</b>.</li>
+    <li><b>Left (original):</b> press ▶ to hear the phrase; use Repeat and 0.6/0.8/1× speed to drill it.</li>
+    <li><b>Record</b> your voice (the original does not play — use headphones). Press again to stop.</li>
+    <li><b>Right (you):</b> press ▶ to hear your take; Repeat if you like.</li>
+    <li>Go back and forth between left and right to match pronunciation and intonation.</li>
   </ol>
-  <b>Tips:</b> use 1× for intonation; the mic needs an https link + permission. Android Chrome recommended.`
+  <b>Mic:</b> open the https link (github.io) and allow the mic. If it won't record: lock icon (left of the address) → Microphone → Allow → refresh.`
 }
 };
 let LANG=localStorage.getItem("phraselab_lang")||"ja";
@@ -278,7 +255,7 @@ $("len").onclick=()=>{LANG="en";localStorage.setItem("phraselab_lang","en");appl
 /* ============ AUDIO CORE ============ */
 let AC; const ctx=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
 let refBuf=null, regA=0, regB=1, speed=1, refSrc=null, headRAF=null;
-let playPos=0, refMode="", clipLoop=false;
+let playPos=0, refMode="", clipLoop=false, topMode="all";
 
 async function loadRef(arrbuf){
   try{ refBuf=await ctx().decodeAudioData(arrbuf); }
@@ -359,7 +336,7 @@ function drawTake(){if(!youBuf)return;
 /* ---- selector transport (whole song) ---- */
 function setCursor(){if(!refBuf)return;const c=$("cur");c.style.display="block";
   c.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";}
-function updTransportBtn(){$("tPlay").textContent=refMode==="transport"?"■":"▶";}
+function updTransportBtn(){$("tPlay").textContent=refMode?"■":"▶";}
 function updClipBtn(){$("clipPlay").textContent=refMode==="clip"?"■":"▶";}
 function stopRef(){if(refSrc){try{refSrc.stop()}catch(_){}refSrc=null;}
   if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";
@@ -382,7 +359,10 @@ function transportPlay(from){
 function seekBy(d){if(!refBuf)return;
   const np=Math.max(0,Math.min(playPos+d,refBuf.duration-0.02));
   if(refMode==="transport")transportPlay(np);else{playPos=np;setCursor();}}
-$("tPlay").addEventListener("click",()=>{if(refMode==="transport")stopRef();else transportPlay(playPos);});
+$("tPlay").addEventListener("click",()=>{if(refMode)stopRef();else if(topMode==="sel")playClip();else transportPlay(playPos);});
+$("topMode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  [...$("topMode").children].forEach(x=>x.classList.remove("on"));b.classList.add("on");topMode=b.dataset.m;
+  if(refMode)stopRef();});
 $("tBack").addEventListener("click",()=>seekBy(-10));
 $("tFwd").addEventListener("click",()=>seekBy(10));
 wave.addEventListener("click",e=>{if(!refBuf)return;
@@ -419,6 +399,8 @@ let mediaRec=null,chunks=[],youBuf=null,youBlob=null,youURL=null,youAudio=null,s
 const RS=()=>$("recStatus");
 function status(m,c){RS().textContent=m;RS().style.color=c||"var(--ink-faint)";}
 async function ensureMic(){if(stream&&stream.active)return stream;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    const err=new Error("insecure");err.name="InsecureContext";throw err;}
   stream=await navigator.mediaDevices.getUserMedia({audio:true});return stream;}
 function pickMime(){for(const m of ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg",""])
   {if(m===""||(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)))return m;}return "";}
@@ -447,8 +429,20 @@ $("recBtn").addEventListener("click",async()=>{
 });
 
 /* ---- RIGHT panel: play the recorded take (independent) ---- */
-function stopTake(){if(youAudio){try{youAudio.pause()}catch(_){}}takePlaying=false;$("takePlay").textContent="▶";}
-function playTake(){if(!youURL)return;ctx().resume();
+let takeSrc=null;
+function stopTake(){
+  if(takeSrc){try{takeSrc.stop()}catch(_){}takeSrc=null;}
+  if(youAudio){try{youAudio.pause()}catch(_){}}
+  takePlaying=false;$("takePlay").textContent="▶";}
+function playTake(){
+  if(!youURL&&!youBuf)return;ctx().resume();
+  if(youBuf){ // decoded PCM = most reliable on desktop Chrome
+    if(takeSrc){try{takeSrc.stop()}catch(_){}}
+    const s=ctx().createBufferSource();s.buffer=youBuf;s.loop=takeLoop;s.connect(ctx().destination);
+    s.onended=()=>{if(takeSrc===s&&!takeLoop){takePlaying=false;$("takePlay").textContent="▶";takeSrc=null;}};
+    s.start();takeSrc=s;takePlaying=true;$("takePlay").textContent="■";return;
+  }
+  // fallback: element playback
   if(youAudio){try{youAudio.pause()}catch(_){}}
   youAudio=new Audio(youURL);youAudio.loop=takeLoop;
   youAudio.onended=()=>{if(!takeLoop){takePlaying=false;$("takePlay").textContent="▶";}};
@@ -458,7 +452,7 @@ $("takePlay").addEventListener("click",()=>{if(takePlaying)stopTake();else playT
 $("takeLoopBtn").addEventListener("click",()=>{takeLoop=!takeLoop;
   $("takeLoopBtn").textContent=takeLoop?t("loop_on"):t("loop_off");
   $("takeLoopBtn").style.color=takeLoop?"var(--you)":"";
-  if(youAudio)youAudio.loop=takeLoop;});
+  if(takeSrc)takeSrc.loop=takeLoop;if(youAudio)youAudio.loop=takeLoop;});
 
 ["pointerdown","keydown","touchstart"].forEach(e=>document.addEventListener(e,()=>{try{ctx().resume()}catch(_){}},{passive:true}));
 
