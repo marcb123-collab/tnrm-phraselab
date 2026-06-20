@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#14161c">
+<title>Phrase Lab</title>
+<style>
+  :root{
+    --bg:#14161c; --panel:#1c1f29; --panel2:#232735; --line:#2e3340;
+    --ink:#e9ecf2; --ink-dim:#9aa3b2; --ink-faint:#5e6678;
+    --ref:#5ad1c8; --you:#ff9d4d; --hot:#ff5470; --ok:#7bdc8b;
+    --r:14px;
+    --mono:"SF Mono",ui-monospace,"Roboto Mono",monospace;
+    --sans:-apple-system,"Segoe UI",Roboto,system-ui,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);overscroll-behavior:none}
+  body{padding:14px 14px 40px;max-width:560px;margin:0 auto}
+  .top{display:flex;justify-content:space-between;align-items:flex-start}
+  h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;margin:2px 0;font-weight:700}
+  .sub{color:var(--ink-faint);font-size:11px;letter-spacing:.03em;margin:0 0 14px}
+  .lang{display:flex;background:var(--panel2);border-radius:9px;padding:2px;gap:2px}
+  .lang button{padding:5px 9px;font-size:11px;background:transparent;color:var(--ink-dim);
+    border:0;border-radius:7px;font-family:var(--mono);font-weight:600}
+  .lang button.on{background:var(--panel);color:var(--ink)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:12px}
+  .card h2{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);
+    margin:0 0 10px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .dot.ref{background:var(--ref)} .dot.you{background:var(--you)}
+  button{font-family:var(--sans);font-size:14px;border:0;border-radius:11px;padding:11px 14px;
+    background:var(--panel2);color:var(--ink);font-weight:600;cursor:pointer;
+    transition:transform .04s,background .15s;touch-action:manipulation}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.34;cursor:not-allowed}
+  .row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 auto}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--ink-dim)}
+  .rec{background:var(--hot);color:#fff}
+  .rec.armed{animation:pulse 1.1s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,84,112,.55)}50%{box-shadow:0 0 0 9px rgba(255,84,112,0)}}
+  .playref{background:rgba(90,209,200,.16);color:var(--ref);border:1px solid rgba(90,209,200,.35)}
+  .playyou{background:rgba(255,157,77,.16);color:var(--you);border:1px solid rgba(255,157,77,.4)}
+  canvas{width:100%;display:block;border-radius:9px;background:var(--panel2)}
+  .wavewrap{position:relative}
+  .handles{position:absolute;inset:0;pointer-events:none}
+  .handle{position:absolute;top:0;bottom:0;width:30px;margin-left:-15px;pointer-events:auto;touch-action:none;cursor:ew-resize}
+  .handle::before{content:"";position:absolute;left:14px;top:0;bottom:0;width:2px;background:var(--ref)}
+  .region{position:absolute;top:0;bottom:0;background:rgba(90,209,200,.10);
+    border-left:1px solid rgba(90,209,200,.4);border-right:1px solid rgba(90,209,200,.4)}
+  .playhead{position:absolute;top:0;bottom:0;width:1.5px;background:var(--hot);left:0;display:none}
+  label.file{display:block;text-align:center}
+  input[type=file]{display:none}
+  textarea{width:100%;min-height:80px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:10px;padding:10px;font-size:15px;font-family:var(--sans);line-height:1.5;resize:vertical}
+  .lyrics{margin-top:4px}
+  .lyric{padding:9px 11px;border-radius:9px;font-size:16px;line-height:1.35;color:var(--ink-dim);
+    cursor:pointer;border:1px solid transparent}
+  .lyric.active{background:var(--panel2);color:var(--ink);border-color:var(--line)}
+  .lyric.playing{background:rgba(90,209,200,.14);color:#fff;border-color:rgba(90,209,200,.4)}
+  .lyric.done{color:var(--ink-faint)} .lyric.done::after{content:" ✓";color:var(--ok)}
+  .seg{display:flex;background:var(--panel2);border-radius:11px;padding:3px;gap:3px}
+  .seg button{flex:1;background:transparent;padding:8px 0;font-size:13px;font-family:var(--mono);color:var(--ink-dim)}
+  .seg button.on{background:var(--panel);color:var(--ink)}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--ink-faint);display:flex;justify-content:space-between;margin-top:8px}
+  .hint{font-size:11px;color:var(--ink-faint);line-height:1.55;margin-top:8px}
+  .pitchlegend{display:flex;gap:14px;font-size:11px;color:var(--ink-dim);margin-bottom:8px}
+  .pitchlegend span{display:flex;align-items:center;gap:6px}
+  .empty{color:var(--ink-faint);font-size:13px;text-align:center;padding:18px 6px}
+  .syncbig{background:var(--ref);color:#06231f;font-size:17px;padding:16px;width:100%;margin-top:8px;display:none}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#000;color:#fff;
+    padding:10px 16px;border-radius:30px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+  .toast.show{opacity:.94}
+  a.mini{color:var(--ref);font-size:11px;cursor:pointer}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:4px 13px;margin-bottom:12px}
+  summary{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);
+    font-weight:600;padding:9px 0;cursor:pointer;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"＋ ";color:var(--ref)}
+  details[open] summary::before{content:"− "}
+  .help{font-size:13.5px;line-height:1.65;color:var(--ink-dim);padding:0 0 10px}
+  .help b{color:var(--ink)} .help ol{padding-left:20px;margin:6px 0} .help li{margin:5px 0}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div><h1>Phrase Lab</h1><p class="sub" data-i18n="tagline"></p></div>
+  <div class="lang">
+    <button id="ljp" class="on">日本語</button><button id="len">EN</button>
+  </div>
+</div>
+
+<details>
+  <summary data-i18n="help_title"></summary>
+  <div class="help" id="helpBody"></div>
+</details>
+
+<!-- REFERENCE -->
+<div class="card">
+  <h2><span class="dot ref"></span><span data-i18n="ref_h"></span></h2>
+  <div id="noRef">
+    <label class="file"><input type="file" id="refFile" accept="audio/*">
+      <span style="display:block;padding:11px;background:var(--panel2);border-radius:11px;color:var(--ref);font-weight:600" data-i18n="choose"></span>
+    </label>
+    <p class="hint" data-i18n="ref_hint"></p>
+  </div>
+  <div id="refUI" style="display:none">
+    <div class="wavewrap">
+      <canvas id="wave" height="120"></canvas>
+      <div class="handles" id="handles">
+        <div class="region" id="region"></div>
+        <div class="handle a" id="hA"></div><div class="handle b" id="hB"></div>
+        <div class="playhead" id="head"></div>
+      </div>
+    </div>
+    <div class="meta"><span id="regLabel"></span><span><a class="mini" id="changeRef" data-i18n="change"></a></span></div>
+    <div class="row" style="margin-top:10px">
+      <button class="playref" id="playRef"></button>
+      <button class="ghost" id="loopBtn" style="flex:0 0 96px"></button>
+    </div>
+    <div class="seg" style="margin-top:8px" id="speed">
+      <button data-s="0.6">0.6×</button><button data-s="0.8">0.8×</button><button data-s="1" class="on">1×</button>
+    </div>
+    <p class="hint" data-i18n="drag_hint"></p>
+  </div>
+</div>
+
+<!-- RECORD + COMPARE -->
+<div class="card">
+  <h2><span class="dot you"></span><span data-i18n="take_h"></span></h2>
+  <div class="row">
+    <button class="rec" id="recBtn" disabled></button>
+    <button class="playyou" id="playYou" disabled></button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button class="playref" id="abRef" disabled></button>
+    <button class="playyou" id="abYou" disabled></button>
+  </div>
+  <div id="pitchBox" style="margin-top:12px;display:none">
+    <div class="pitchlegend">
+      <span><span class="dot ref"></span><span data-i18n="leg_ref"></span></span>
+      <span><span class="dot you"></span><span data-i18n="leg_you"></span></span>
+      <span style="color:var(--ink-faint)" data-i18n="leg_axis"></span>
+    </div>
+    <canvas id="pitch" height="150"></canvas>
+    <p class="hint" data-i18n="pitch_hint"></p>
+  </div>
+  <div id="pitchEmpty" class="empty" data-i18n="pitch_empty"></div>
+</div>
+
+<!-- LYRICS -->
+<div class="card">
+  <h2 data-i18n="lyrics_h"></h2>
+  <div id="lyricView" class="lyrics"></div>
+  <div id="lyricEditWrap">
+    <textarea id="lyricInput" data-i18n-ph="lyrics_ph"></textarea>
+    <button class="ghost" id="saveLyrics" style="width:100%;margin-top:8px" data-i18n="save_lyrics"></button>
+  </div>
+  <div class="row" id="lyricBtns" style="display:none;margin-top:8px">
+    <button class="ghost" id="markDone" style="flex:2" data-i18n="mark_done"></button>
+    <button class="ghost" id="editLyrics" style="flex:1" data-i18n="edit"></button>
+  </div>
+
+  <button class="syncbig" id="syncTap"></button>
+  <div class="row" id="syncBtns" style="margin-top:8px;display:none">
+    <button class="ghost" id="syncStart" style="flex:2"></button>
+    <button class="ghost" id="syncClear" style="flex:1" data-i18n="sync_clear"></button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <a class="mini" id="copySync" data-i18n="sync_copy" style="display:none"></a>
+  </div>
+  <p class="hint" data-i18n="lyrics_hint"></p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const toast=m=>{const t=$("toast");t.textContent=m;t.classList.add("show");
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("show"),1800);};
+
+/* ============ I18N ============ */
+const I18N={
+ja:{
+  tagline:"聴く・繰り返す・録音する・比べる — 1フレーズずつ",
+  help_title:"ヘルプ",
+  ref_h:"お手本の音源", choose:"スマホから音源を選ぶ",
+  ref_hint:"権利のある短い音源を使ってください。ボーカルのみの音源（AIで分離した声、またはトリ／デールの歌だけ）だと、ピッチの線がきれいに出ます。",
+  change:"音源を変える",
+  play_phrase:"▶ フレーズを再生", loop:"リピート", on:"オン", off:"オフ",
+  drag_hint:"2つの水色のつまみをドラッグして1行を囲みます（同期済みなら歌詞をタップでも自動で囲みます）。遅い速度は音程も下がるので、イントネーションの確認は1×で。",
+  take_h:"あなたの録音", rec:"● 録音", stop:"■ 停止", play_mine:"▶ 自分のを再生",
+  hear_ref:"お手本を聴く", then_mine:"次に自分のを",
+  leg_ref:"お手本", leg_you:"あなた", leg_axis:"↑ 高い ・ → 時間",
+  pitch_hint:"オレンジの形を水色に合わせます。水色が上がっているのにオレンジが平らなら、音程が上がっていないサイン。そこを直しましょう。",
+  pitch_empty:"フレーズに合わせて録音すると、お手本の隣にあなたのピッチが表示されます。",
+  lyrics_h:"歌詞（読む用）", lyrics_ph:"ここに歌詞を貼り付け（1行ずつ）…",
+  save_lyrics:"歌詞を保存", mark_done:"この行をできた ✓", edit:"編集",
+  lyrics_hint:"行をタップして場所を覚えておけます。歌詞はこのスマホ内だけに保存され、アップロードされません。",
+  sync_start:"歌詞を合わせる（タップ開始）", sync_tap:"行の頭でタップ", sync_done_btn:"合わせ直す",
+  sync_clear:"同期をクリア", sync_copy:"同期データをコピー",
+  msg_loaded:"お手本を読み込みました", msg_badaudio:"この音源を読み込めませんでした",
+  msg_micblock:"マイクがブロックされています（httpsと許可が必要）",
+  msg_got:"録音できました — 下で比べてください", msg_recfail:"録音を処理できませんでした",
+  msg_lyrsaved:"歌詞を保存しました", msg_tapfirst:"先に行をタップしてください",
+  msg_synced:"同期完了 — 歌詞をタップでそのフレーズへ", msg_synccleared:"同期をクリアしました",
+  msg_synccopied:"同期データをコピーしました", msg_addlyr:"先に歌詞を保存してください",
+  msg_nopitch:"はっきりした音程が検出できません — ボーカルのみの音源で試してください",
+  help:`<b>使い方</b>
+  <ol>
+    <li>お手本の音源を読み込む（<b>ボーカルのみ</b>の音源がベスト）。</li>
+    <li>歌詞を貼り付けて「歌詞を保存」。</li>
+    <li>（任意）<b>歌詞を合わせる</b>を押し、再生に合わせて各行の頭でタップ。以降は歌詞をタップするとそのフレーズに移動します。</li>
+    <li>水色のつまみをドラッグ、または同期した行をタップして1行を囲む。</li>
+    <li><b>録音</b>を押すとフレーズが流れるので一緒に歌う。終わったら停止。</li>
+    <li><b>お手本を聴く → 自分のを</b>で聴き比べ、オレンジのピッチを水色に合わせる。</li>
+    <li>うまくいったら「この行をできた ✓」。</li>
+  </ol>
+  <b>コツ：</b>イントネーションの確認は1×で。マイクはhttpsのリンクと許可が必要です。Android Chrome推奨。`
+},
+en:{
+  tagline:"Listen · loop · record · compare — one phrase at a time",
+  help_title:"Help",
+  ref_h:"Reference clip", choose:"Choose audio from phone",
+  ref_hint:"A short clip you have the rights to. A vocal-only file (AI-split voice, or Tori/Dale singing dry) gives the cleanest pitch line.",
+  change:"change clip",
+  play_phrase:"▶ Play phrase", loop:"Loop", on:"on", off:"off",
+  drag_hint:"Drag the two teal handles to box one line (or tap a synced lyric to box it automatically). Slower speeds also drop the pitch — use 1× for intonation.",
+  take_h:"Your take", rec:"● Record", stop:"■ Stop", play_mine:"▶ Play mine",
+  hear_ref:"Hear theirs", then_mine:"then mine",
+  leg_ref:"reference", leg_you:"you", leg_axis:"↑ higher · → time",
+  pitch_hint:"Match the orange shape to the teal one. Flat orange where teal rises = you're not lifting the note. Fix that.",
+  pitch_empty:"Record over a phrase and your pitch line appears next to the reference.",
+  lyrics_h:"Lyrics (reading aid)", lyrics_ph:"Paste the lyrics here, one line per line…",
+  save_lyrics:"Save lyrics", mark_done:"Mark this line ✓", edit:"Edit",
+  lyrics_hint:"Tap a line to keep your place. Lyrics stay on this phone only — not uploaded.",
+  sync_start:"Sync lyrics (start tapping)", sync_tap:"Tap at line start", sync_done_btn:"Re-sync",
+  sync_clear:"Clear sync", sync_copy:"Copy sync data",
+  msg_loaded:"Reference loaded", msg_badaudio:"Couldn't read that audio file",
+  msg_micblock:"Mic blocked — needs https + permission",
+  msg_got:"Got it — compare below", msg_recfail:"Couldn't process recording",
+  msg_lyrsaved:"Lyrics saved", msg_tapfirst:"Tap a line first",
+  msg_synced:"Synced — tap a line to jump to that phrase", msg_synccleared:"Sync cleared",
+  msg_synccopied:"Sync data copied", msg_addlyr:"Save lyrics first",
+  msg_nopitch:"No clear pitch detected — try a vocal-only reference",
+  help:`<b>How to practice</b>
+  <ol>
+    <li>Load a reference clip (a <b>vocal-only</b> file works best).</li>
+    <li>Paste the lyrics and Save.</li>
+    <li>(Optional) <b>Sync lyrics</b>: press it, then tap at the start of each line as it plays. After that, tapping a line jumps to that phrase.</li>
+    <li>Drag the teal handles, or tap a synced line, to box one line.</li>
+    <li>Press <b>Record</b> — the phrase plays so you sing along. Stop when done.</li>
+    <li><b>Hear theirs → then mine</b>, and match the orange pitch line to the teal.</li>
+    <li>When it's solid, mark the line ✓.</li>
+  </ol>
+  <b>Tips:</b> use 1× for intonation; the mic needs an https link + permission. Android Chrome recommended.`
+}
+};
+let LANG=localStorage.getItem("phraselab_lang")||"ja";
+const t=k=>I18N[LANG][k];
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>el.placeholder=t(el.dataset.i18nPh));
+  $("helpBody").innerHTML=t("help");
+  $("playRef").textContent=t("play_phrase");
+  $("loopBtn").textContent=t("loop")+": "+(loop?t("on"):t("off"));
+  $("recBtn").textContent=armed?t("stop"):t("rec");
+  $("playYou").textContent=t("play_mine");
+  $("abRef").textContent=t("hear_ref"); $("abYou").textContent=t("then_mine");
+  $("syncStart").textContent=syncMap?t("sync_done_btn"):t("sync_start");
+  $("syncTap").textContent=t("sync_tap");
+  $("ljp").classList.toggle("on",LANG==="ja"); $("len").classList.toggle("on",LANG==="en");
+  if(refBuf)updRegLabel();
+  renderLyrics();
+}
+$("ljp").onclick=()=>{LANG="ja";localStorage.setItem("phraselab_lang","ja");applyLang();};
+$("len").onclick=()=>{LANG="en";localStorage.setItem("phraselab_lang","en");applyLang();};
+
+/* ============ AUDIO CORE ============ */
+let AC; const ctx=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
+let refBuf=null, regA=0, regB=1, loop=false, speed=1, refSrc=null, headRAF=null;
+
+async function loadRef(arrbuf){
+  try{ refBuf=await ctx().decodeAudioData(arrbuf); }
+  catch(e){ toast(t("msg_badaudio")); return; }
+  regA=0; regB=1;
+  $("noRef").style.display="none"; $("refUI").style.display="block"; $("recBtn").disabled=false;
+  drawWave(); layoutHandles(); updRegLabel(); toast(t("msg_loaded"));
+}
+$("refFile").addEventListener("change",async e=>{const f=e.target.files[0];if(f)loadRef(await f.arrayBuffer());});
+$("changeRef").addEventListener("click",()=>$("refFile").click());
+
+// auto-load clip + sync hosted next to this page
+(async()=>{
+  for(const n of ["reference.m4a","reference.mp3","reference.wav","reference.ogg"]){
+    try{const r=await fetch(n);if(r.ok){loadRef(await r.arrayBuffer());break;}}catch(_){}
+  }
+  try{const r=await fetch("sync.json");if(r.ok){
+    const arr=await r.json();
+    const txt=arr.map(o=>o.line).join("\n"); localStorage.setItem(LS_TXT,txt);
+    lines=txt.split("\n"); syncMap={};
+    let li=0; arr.forEach(o=>{while(li<lines.length&&!lines[li].trim())li++; if(li<lines.length){syncMap[li]=o.t;li++;}});
+    saveSync(); $("lyricEditWrap").style.display="none"; applyLang();
+  }}catch(_){}
+})();
+
+/* ---- waveform ---- */
+const wave=$("wave");
+function drawWave(){
+  const dpr=devicePixelRatio||1,w=wave.clientWidth,h=wave.clientHeight;
+  wave.width=w*dpr;wave.height=h*dpr;const g=wave.getContext("2d");g.scale(dpr,dpr);
+  g.clearRect(0,0,w,h); if(!refBuf)return;
+  const data=refBuf.getChannelData(0),step=Math.max(1,Math.floor(data.length/w));
+  g.strokeStyle="#5b6275";g.lineWidth=1;g.beginPath();
+  for(let x=0;x<w;x++){let min=1,max=-1;
+    for(let i=0;i<step;i++){const v=data[x*step+i]||0;if(v<min)min=v;if(v>max)max=v;}
+    g.moveTo(x,(1-(max*0.9+1)/2)*h);g.lineTo(x,(1-(min*0.9+1)/2)*h);}
+  g.stroke();
+}
+/* ---- handles ---- */
+const handles=$("handles"); const px=p=>p*handles.clientWidth;
+function layoutHandles(){$("hA").style.left=px(regA)+"px";$("hB").style.left=px(regB)+"px";
+  const r=$("region");r.style.left=px(regA)+"px";r.style.width=px(regB-regA)+"px";}
+function updRegLabel(){if(!refBuf)return;const d=refBuf.duration;
+  $("regLabel").textContent=(LANG==="ja"?"フレーズ ":"phrase ")+(regA*d).toFixed(2)+"–"+(regB*d).toFixed(2)+"s";}
+function dragHandle(el,isA){
+  const move=ev=>{const c=ev.touches?ev.touches[0]:ev,rect=handles.getBoundingClientRect();
+    let p=(c.clientX-rect.left)/rect.width;p=Math.max(0,Math.min(1,p));
+    if(isA)regA=Math.min(p,regB-0.01);else regB=Math.max(p,regA+0.01);
+    layoutHandles();updRegLabel();};
+  const up=()=>{["touchmove","mousemove"].forEach(e=>document.removeEventListener(e,move));
+    ["touchend","mouseup"].forEach(e=>document.removeEventListener(e,up));};
+  const down=ev=>{ev.preventDefault();
+    document.addEventListener("touchmove",move,{passive:false});document.addEventListener("mousemove",move);
+    document.addEventListener("touchend",up);document.addEventListener("mouseup",up);};
+  el.addEventListener("touchstart",down,{passive:false});el.addEventListener("mousedown",down);
+}
+dragHandle($("hA"),true);dragHandle($("hB"),false);
+addEventListener("resize",()=>{if(refBuf){drawWave();layoutHandles();}if(youBuf)drawPitch();});
+
+/* ---- play region ---- */
+function stopRef(){if(refSrc){try{refSrc.stop()}catch(_){}refSrc=null;}
+  if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";clearPlaying();}
+function playRegion(after){
+  if(!refBuf)return;stopRef();ctx().resume();
+  const off=regA*refBuf.duration,dur=(regB-regA)*refBuf.duration;
+  const s=ctx().createBufferSource();s.buffer=refBuf;s.playbackRate.value=speed;
+  s.connect(ctx().destination);s.loop=loop;s.loopStart=off;s.loopEnd=regB*refBuf.duration;
+  s.start(0,off,loop?undefined:dur);refSrc=s;
+  const t0=ctx().currentTime,head=$("head");head.style.display="block";
+  const tick=()=>{let e=(ctx().currentTime-t0)*speed;if(loop)e=e%dur;
+    const abs=off+e;const p=abs/refBuf.duration;head.style.left=px(Math.min(p,regB))+"px";
+    highlightPlaying(abs);
+    if(loop||e<dur)headRAF=requestAnimationFrame(tick);
+    else{head.style.display="none";clearPlaying();if(after)after();}};
+  tick();
+  if(!loop)s.onended=()=>{if(refSrc===s){head.style.display="none";clearPlaying();if(after)after();}};
+}
+$("playRef").addEventListener("click",()=>playRegion());
+$("loopBtn").addEventListener("click",()=>{loop=!loop;
+  $("loopBtn").textContent=t("loop")+": "+(loop?t("on"):t("off"));
+  $("loopBtn").style.color=loop?"var(--ref)":"";if(!loop)stopRef();});
+$("speed").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  [...$("speed").children].forEach(x=>x.classList.remove("on"));b.classList.add("on");speed=parseFloat(b.dataset.s);});
+
+/* ---- record ---- */
+let mediaRec=null,chunks=[],youBuf=null,youBlob=null,stream=null,armed=false;
+async function ensureMic(){if(stream)return stream;
+  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  return stream;}
+$("recBtn").addEventListener("click",async()=>{
+  if(armed){mediaRec.stop();return;}
+  try{await ensureMic();}catch(e){toast(t("msg_micblock"));return;}
+  chunks=[];mediaRec=new MediaRecorder(stream);
+  mediaRec.ondataavailable=ev=>chunks.push(ev.data);
+  mediaRec.onstop=async()=>{armed=false;const b=$("recBtn");b.classList.remove("armed");b.textContent=t("rec");
+    youBlob=new Blob(chunks,{type:chunks[0]?.type||"audio/webm"});
+    try{youBuf=await ctx().decodeAudioData(await youBlob.arrayBuffer());}
+    catch(e){toast(t("msg_recfail"));return;}
+    $("playYou").disabled=false;$("abRef").disabled=false;$("abYou").disabled=false;
+    drawPitch();toast(t("msg_got"));};
+  mediaRec.start();armed=true;const b=$("recBtn");b.classList.add("armed");b.textContent=t("stop");
+  playRegion();
+});
+/* ---- play her take ---- */
+let youSrc=null;
+function playYou(){if(!youBuf)return;if(youSrc){try{youSrc.stop()}catch(_){}}ctx().resume();
+  const s=ctx().createBufferSource();s.buffer=youBuf;s.connect(ctx().destination);s.start();youSrc=s;
+  s.onended=()=>{if(youSrc===s)youSrc=null;};}
+$("playYou").addEventListener("click",playYou);
+$("abRef").addEventListener("click",()=>playRegion());
+$("abYou").addEventListener("click",playYou);
+
+/* ---- pitch ---- */
+function pitchAt(buf,sr,start,len){let rms=0;for(let i=0;i<len;i++){const v=buf[start+i]||0;rms+=v*v;}
+  rms=Math.sqrt(rms/len);if(rms<0.008)return 0;
+  const maxLag=Math.floor(sr/80),minLag=Math.floor(sr/1000),c=new Float32Array(maxLag);
+  for(let lag=minLag;lag<maxLag;lag++){let sum=0;for(let i=0;i<len-lag;i++)sum+=(buf[start+i]||0)*(buf[start+i+lag]||0);c[lag]=sum;}
+  let d=minLag;while(d<maxLag-1&&c[d]>c[d+1])d++;
+  let max=-1,pos=-1;for(let i=d;i<maxLag;i++){if(c[i]>max){max=c[i];pos=i;}}
+  return pos>0?sr/pos:0;}
+function contour(ch,sr){const win=Math.floor(sr*0.045),hop=Math.floor(sr*0.018),out=[];
+  for(let s=0;s+win<ch.length;s+=hop){const f=pitchAt(ch,sr,s,win);out.push(f>0?(69+12*Math.log2(f/440)):null);}return out;}
+function drawPitch(){if(!refBuf||!youBuf)return;
+  $("pitchEmpty").style.display="none";$("pitchBox").style.display="block";
+  const cv=$("pitch"),dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+  cv.width=w*dpr;cv.height=h*dpr;const g=cv.getContext("2d");g.scale(dpr,dpr);g.clearRect(0,0,w,h);
+  const sr=refBuf.sampleRate,s=Math.floor(regA*refBuf.length),e=Math.floor(regB*refBuf.length);
+  const rC=contour(refBuf.getChannelData(0).slice(s,e),sr);
+  const yC=contour(youBuf.getChannelData(0),youBuf.sampleRate);
+  const vals=[...rC,...yC].filter(v=>v!=null);
+  if(!vals.length){g.fillStyle="#5e6678";g.font="13px sans-serif";g.fillText(t("msg_nopitch"),12,h/2);return;}
+  let lo=Math.min(...vals)-2,hi=Math.max(...vals)+2;
+  g.strokeStyle="#262b38";g.lineWidth=1;
+  for(let n=Math.ceil(lo);n<=hi;n++){if(n%12)continue;const y=h-((n-lo)/(hi-lo))*h;g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
+  const cs=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const plot=(arr,color)=>{g.strokeStyle=color;g.lineWidth=2.4;g.lineJoin="round";g.beginPath();let st=false;
+    arr.forEach((v,i)=>{const x=(i/(arr.length-1))*w;if(v==null){st=false;return;}
+      const y=h-((v-lo)/(hi-lo))*h;if(!st){g.moveTo(x,y);st=true;}else g.lineTo(x,y);});g.stroke();};
+  plot(rC,cs("--ref"));plot(yC,cs("--you"));
+}
+
+/* ============ LYRICS + SYNC ============ */
+const LS_TXT="phraselab_lyrics",LS_DONE="phraselab_done",LS_LINE="phraselab_line",LS_SYNC="phraselab_sync";
+let lines=[],doneSet=new Set(JSON.parse(localStorage.getItem(LS_DONE)||"[]"));
+let activeLine=parseInt(localStorage.getItem(LS_LINE)||"-1");
+let syncMap=JSON.parse(localStorage.getItem(LS_SYNC)||"null"); // {lineIndex: seconds}
+let syncing=false, syncCursor=-1, syncT0=0;
+function saveSync(){localStorage.setItem(LS_SYNC,JSON.stringify(syncMap));}
+
+function renderLyrics(){
+  const v=$("lyricView");v.innerHTML="";
+  if(!lines.length){$("lyricBtns").style.display="none";$("syncBtns").style.display="none";$("copySync").style.display="none";return;}
+  $("lyricEditWrap").style.display="none";$("lyricBtns").style.display="flex";$("syncBtns").style.display="flex";
+  $("copySync").style.display=syncMap?"inline":"none";
+  lines.forEach((ln,i)=>{if(!ln.trim())return;
+    const d=document.createElement("div");
+    d.className="lyric"+(i===activeLine?" active":"")+(doneSet.has(i)?" done":"");
+    d.dataset.i=i;d.textContent=ln;
+    d.onclick=()=>{activeLine=i;localStorage.setItem(LS_LINE,i);
+      if(syncMap&&syncMap[i]!=null&&refBuf)boxLine(i);
+      renderLyrics();};
+    v.appendChild(d);});
+}
+function boxLine(i){
+  const start=syncMap[i];const keys=Object.keys(syncMap).map(Number).sort((a,b)=>a-b);
+  const nx=keys.find(k=>k>i);const end=nx!=null?syncMap[nx]:refBuf.duration;
+  regA=Math.max(0,start/refBuf.duration);regB=Math.min(1,end/refBuf.duration);
+  layoutHandles();updRegLabel();
+}
+function highlightPlaying(absT){
+  if(!syncMap)return;const keys=Object.keys(syncMap).map(Number).sort((a,b)=>a-b);
+  let cur=-1;for(const k of keys){if(syncMap[k]<=absT+0.05)cur=k;else break;}
+  document.querySelectorAll(".lyric").forEach(el=>el.classList.toggle("playing",+el.dataset.i===cur));
+}
+function clearPlaying(){document.querySelectorAll(".lyric.playing").forEach(el=>el.classList.remove("playing"));}
+
+$("saveLyrics").addEventListener("click",()=>{const x=$("lyricInput").value;
+  localStorage.setItem(LS_TXT,x);lines=x.split("\n");renderLyrics();toast(t("msg_lyrsaved"));});
+$("editLyrics").addEventListener("click",()=>{$("lyricInput").value=localStorage.getItem(LS_TXT)||lines.join("\n");
+  $("lyricEditWrap").style.display="block";$("lyricBtns").style.display="none";$("syncBtns").style.display="none";
+  $("copySync").style.display="none";$("lyricView").innerHTML="";});
+$("markDone").addEventListener("click",()=>{if(activeLine<0){toast(t("msg_tapfirst"));return;}
+  doneSet.has(activeLine)?doneSet.delete(activeLine):doneSet.add(activeLine);
+  localStorage.setItem(LS_DONE,JSON.stringify([...doneSet]));renderLyrics();});
+
+/* tap-to-sync */
+$("syncStart").addEventListener("click",()=>{
+  if(!lines.some(l=>l.trim())){toast(t("msg_addlyr"));return;}
+  syncMap={};syncing=true;syncCursor=-1;
+  // advance to first non-empty line
+  for(let i=0;i<lines.length;i++){if(lines[i].trim()){syncCursor=i;break;}}
+  $("syncTap").style.display="block";
+  // play full clip
+  regA=0;regB=1;layoutHandles();stopRef();ctx().resume();
+  const s=ctx().createBufferSource();s.buffer=refBuf;s.connect(ctx().destination);
+  s.start();refSrc=s;syncT0=ctx().currentTime;
+  const head=$("head");head.style.display="block";
+  const tick=()=>{const e=ctx().currentTime-syncT0;head.style.left=px(Math.min(e/refBuf.duration,1))+"px";
+    if(e<refBuf.duration&&syncing)headRAF=requestAnimationFrame(tick);else endSync();};
+  tick();
+});
+$("syncTap").addEventListener("click",()=>{
+  if(!syncing)return;const e=ctx().currentTime-syncT0;syncMap[syncCursor]=e;
+  let nx=-1;for(let i=syncCursor+1;i<lines.length;i++){if(lines[i].trim()){nx=i;break;}}
+  if(nx<0){endSync();return;}syncCursor=nx;
+  const el=document.querySelector('.lyric[data-i="'+syncCursor+'"]');if(el)el.scrollIntoView({block:"center"});
+});
+function endSync(){if(!syncing&&!refSrc)return;syncing=false;
+  if(refSrc){try{refSrc.stop()}catch(_){}refSrc=null;}if(headRAF)cancelAnimationFrame(headRAF);
+  $("head").style.display="none";$("syncTap").style.display="none";
+  if(syncMap&&Object.keys(syncMap).length){saveSync();toast(t("msg_synced"));}applyLang();}
+$("syncClear").addEventListener("click",()=>{syncMap=null;localStorage.removeItem(LS_SYNC);applyLang();toast(t("msg_synccleared"));});
+$("copySync").addEventListener("click",async()=>{
+  const keys=Object.keys(syncMap).map(Number).sort((a,b)=>a-b);
+  const arr=keys.map(k=>({t:+syncMap[k].toFixed(3),line:lines[k]}));
+  const json=JSON.stringify(arr,null,2);
+  try{await navigator.clipboard.writeText(json);toast(t("msg_synccopied"));}
+  catch(_){prompt("sync.json:",json);}
+});
+
+(function init(){const x=localStorage.getItem(LS_TXT);
+  if(x){$("lyricInput").value=x;lines=x.split("\n");$("lyricEditWrap").style.display="none";}
+  applyLang();})();
+</script>
+</body>
+</html>
