@@ -119,7 +119,7 @@
         <div class="cursor" id="cur"></div>
       </div>
     </div>
-    <div class="meta"><span id="regLabel"></span><span><a class="mini" id="changeRef" data-i18n="change"></a></span></div>
+    <div class="meta"><span id="regLabel"></span></div>
     <div class="row" id="transport" style="margin-top:10px">
       <button class="ghost" id="tBack" style="flex:0 0 66px">−10s</button>
       <button class="playref" id="tPlay" style="flex:1;font-size:16px">▶</button>
@@ -128,6 +128,7 @@
     <p class="hint" data-i18n="transport_hint"></p>
     <div class="row" style="margin-top:10px">
       <button class="playref" id="playRef"></button>
+      <button class="ghost" id="stopRefBtn" style="flex:0 0 52px">■</button>
       <button class="ghost" id="loopBtn" style="flex:0 0 96px"></button>
     </div>
     <div class="seg" style="margin-top:8px" id="speed">
@@ -164,23 +165,6 @@
 <div class="card">
   <h2 data-i18n="lyrics_h"></h2>
   <div id="lyricView" class="lyrics"></div>
-  <div id="lyricEditWrap">
-    <textarea id="lyricInput" data-i18n-ph="lyrics_ph"></textarea>
-    <button class="ghost" id="saveLyrics" style="width:100%;margin-top:8px" data-i18n="save_lyrics"></button>
-  </div>
-  <div class="row" id="lyricBtns" style="display:none;margin-top:8px">
-    <button class="ghost" id="markDone" style="flex:2" data-i18n="mark_done"></button>
-    <button class="ghost" id="editLyrics" style="flex:1" data-i18n="edit"></button>
-  </div>
-
-  <button class="syncbig" id="syncTap"></button>
-  <div class="row" id="syncBtns" style="margin-top:8px;display:none">
-    <button class="ghost" id="syncStart" style="flex:2"></button>
-    <button class="ghost" id="syncClear" style="flex:1" data-i18n="sync_clear"></button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <a class="mini" id="copySync" data-i18n="sync_copy" style="display:none"></a>
-  </div>
   <p class="hint" data-i18n="lyrics_hint"></p>
 </div>
 
@@ -210,7 +194,7 @@ ja:{
   pitch_empty:"フレーズに合わせて録音すると、お手本の隣にあなたのピッチが表示されます。",
   lyrics_h:"歌詞（読む用）", lyrics_ph:"ここに歌詞を貼り付け（1行ずつ）…",
   save_lyrics:"歌詞を保存", mark_done:"この行をできた ✓", edit:"編集",
-  lyrics_hint:"行をタップして場所を覚えておけます。歌詞はこのスマホ内だけに保存され、アップロードされません。",
+  lyrics_hint:"歌詞をスクロールして見られます。行をタップすると場所を覚えておけます。",
   sync_start:"歌詞を合わせる（タップ開始）", sync_tap:"行の頭でタップ", sync_done_btn:"合わせ直す",
   sync_clear:"同期をクリア", sync_copy:"同期データをコピー",
   msg_loaded:"お手本を読み込みました", msg_badaudio:"この音源を読み込めませんでした",
@@ -248,7 +232,7 @@ en:{
   pitch_empty:"Record over a phrase and your pitch line appears next to the reference.",
   lyrics_h:"Lyrics (reading aid)", lyrics_ph:"Paste the lyrics here, one line per line…",
   save_lyrics:"Save lyrics", mark_done:"Mark this line ✓", edit:"Edit",
-  lyrics_hint:"Tap a line to keep your place. Lyrics stay on this phone only — not uploaded.",
+  lyrics_hint:"Scroll to read the lyrics. Tap a line to keep your place.",
   sync_start:"Sync lyrics (start tapping)", sync_tap:"Tap at line start", sync_done_btn:"Re-sync",
   sync_clear:"Clear sync", sync_copy:"Copy sync data",
   msg_loaded:"Reference loaded", msg_badaudio:"Couldn't read that audio file",
@@ -283,8 +267,6 @@ function applyLang(){
   $("recBtn").textContent=armed?t("stop"):t("rec");
   $("playYou").textContent=t("play_mine");
   $("abRef").textContent=t("hear_ref"); $("abYou").textContent=t("then_mine");
-  $("syncStart").textContent=syncMap?t("sync_done_btn"):t("sync_start");
-  $("syncTap").textContent=t("sync_tap");
   $("ljp").classList.toggle("on",LANG==="ja"); $("len").classList.toggle("on",LANG==="en");
   if(refBuf)updRegLabel();
   renderLyrics();
@@ -305,7 +287,6 @@ async function loadRef(arrbuf){
   drawWave(); layoutHandles(); updRegLabel(); playPos=0; setCursor(); updTransportBtn(); toast(t("msg_loaded"));
 }
 $("refFile").addEventListener("change",async e=>{const f=e.target.files[0];if(f)loadRef(await f.arrayBuffer());});
-$("changeRef").addEventListener("click",()=>$("refFile").click());
 
 // auto-load clip + sync hosted next to this page
 (async()=>{
@@ -318,15 +299,14 @@ $("changeRef").addEventListener("click",()=>$("refFile").click());
     const txt=arr.map(o=>o.line).join("\n"); localStorage.setItem(LS_TXT,txt);
     lines=txt.split("\n"); syncMap={};
     let li=0; arr.forEach(o=>{while(li<lines.length&&!lines[li].trim())li++; if(li<lines.length){syncMap[li]=o.t;li++;}});
-    saveSync(); $("lyricEditWrap").style.display="none"; applyLang(); syncLoaded=true;
+    saveSync(); applyLang(); syncLoaded=true;
   }}catch(_){}
   // plain lyrics file — load whenever present (repo is the source of truth); sync.json wins if present
   if(!syncLoaded){
     for(const n of ["reference.txt","lyrics.txt"]){
       try{const r=await fetch(n,{cache:"no-store"});if(r.ok){
         const txt=(await r.text()).replace(/\r/g,"");
-        if(txt.trim()){localStorage.setItem(LS_TXT,txt); lines=txt.split("\n");
-          $("lyricEditWrap").style.display="none"; applyLang();}
+        if(txt.trim()){localStorage.setItem(LS_TXT,txt); lines=txt.split("\n"); applyLang();}
         break;
       }}catch(_){}
     }
@@ -422,32 +402,43 @@ $("speed").addEventListener("click",e=>{const b=e.target.closest("button");if(!b
   [...$("speed").children].forEach(x=>x.classList.remove("on"));b.classList.add("on");speed=parseFloat(b.dataset.s);});
 
 /* ---- record ---- */
-let mediaRec=null,chunks=[],youBuf=null,youBlob=null,stream=null,armed=false;
+let mediaRec=null,chunks=[],youBuf=null,youBlob=null,youURL=null,youAudio=null,stream=null,armed=false;
 async function ensureMic(){if(stream)return stream;
   stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
   return stream;}
+function pickMime(){for(const m of ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg",""])
+  {if(m===""||(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)))return m;}return "";}
 $("recBtn").addEventListener("click",async()=>{
-  if(armed){mediaRec.stop();return;}
-  try{await ensureMic();}catch(e){toast(t("msg_micblock"));return;}
-  chunks=[];mediaRec=new MediaRecorder(stream);
-  mediaRec.ondataavailable=ev=>chunks.push(ev.data);
+  if(armed){try{mediaRec.stop()}catch(_){}return;}
+  if(!window.MediaRecorder){toast("MediaRecorder not supported");return;}
+  try{await ensureMic();}catch(e){toast(t("msg_micblock")+" ("+((e&&e.name)||"error")+")");return;}
+  chunks=[];const mm=pickMime();
+  try{mediaRec=mm?new MediaRecorder(stream,{mimeType:mm}):new MediaRecorder(stream);}
+  catch(e){mediaRec=new MediaRecorder(stream);}
+  mediaRec.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data);};
   mediaRec.onstop=async()=>{armed=false;const b=$("recBtn");b.classList.remove("armed");b.textContent=t("rec");
-    youBlob=new Blob(chunks,{type:chunks[0]?.type||"audio/webm"});
-    try{youBuf=await ctx().decodeAudioData(await youBlob.arrayBuffer());}
-    catch(e){toast(t("msg_recfail"));return;}
+    if(!chunks.length){toast(t("msg_recfail"));return;}
+    youBlob=new Blob(chunks,{type:mediaRec.mimeType||"audio/webm"});
+    if(youURL)URL.revokeObjectURL(youURL);youURL=URL.createObjectURL(youBlob);
     $("playYou").disabled=false;$("abRef").disabled=false;$("abYou").disabled=false;
-    drawPitch();toast(t("msg_got"));};
+    toast(t("msg_got"));
+    try{youBuf=await ctx().decodeAudioData(await youBlob.arrayBuffer());drawPitch();}
+    catch(e){youBuf=null;}   // playback still works via the audio element; pitch just unavailable
+  };
   mediaRec.start();armed=true;const b=$("recBtn");b.classList.add("armed");b.textContent=t("stop");
   playRegion();
 });
-/* ---- play her take ---- */
-let youSrc=null;
-function playYou(){if(!youBuf)return;if(youSrc){try{youSrc.stop()}catch(_){}}ctx().resume();
-  const s=ctx().createBufferSource();s.buffer=youBuf;s.connect(ctx().destination);s.start();youSrc=s;
-  s.onended=()=>{if(youSrc===s)youSrc=null;};}
+/* ---- play her take (blob URL = robust on desktop Chrome) ---- */
+function playYou(){if(!youURL)return;ctx().resume();
+  if(youAudio){try{youAudio.pause()}catch(_){}}
+  youAudio=new Audio(youURL);youAudio.play().catch(()=>toast(t("msg_recfail")));}
 $("playYou").addEventListener("click",playYou);
 $("abRef").addEventListener("click",()=>playRegion());
 $("abYou").addEventListener("click",playYou);
+/* stop button + unlock audio on first gesture */
+$("stopRefBtn").addEventListener("click",()=>{stopRef();if(youAudio){try{youAudio.pause()}catch(_){}}});
+["pointerdown","keydown","touchstart"].forEach(e=>document.addEventListener(e,()=>{try{ctx().resume()}catch(_){}},{passive:true}));
+
 
 /* ---- pitch ---- */
 function pitchAt(buf,sr,start,len){let rms=0;for(let i=0;i<len;i++){const v=buf[start+i]||0;rms+=v*v;}
@@ -488,81 +479,26 @@ function saveSync(){localStorage.setItem(LS_SYNC,JSON.stringify(syncMap));}
 
 function renderLyrics(){
   const v=$("lyricView");v.innerHTML="";
-  if(!lines.length){$("lyricBtns").style.display="none";$("syncBtns").style.display="none";$("copySync").style.display="none";return;}
-  $("lyricEditWrap").style.display="none";$("lyricBtns").style.display="flex";$("syncBtns").style.display="flex";
-  $("copySync").style.display=syncMap?"inline":"none";
+  if(!lines.length)return;
   lines.forEach((ln,i)=>{if(!ln.trim())return;
     const d=document.createElement("div");
-    d.className="lyric"+(i===activeLine?" active":"")+(doneSet.has(i)?" done":"");
+    d.className="lyric"+(i===activeLine?" active":"");
     d.dataset.i=i;d.textContent=ln;
-    d.onclick=()=>{activeLine=i;localStorage.setItem(LS_LINE,i);
-      if(syncMap&&syncMap[i]!=null&&refBuf)boxLine(i);
-      renderLyrics();};
+    d.onclick=()=>{activeLine=i;localStorage.setItem(LS_LINE,i);renderLyrics();};
     v.appendChild(d);});
-}
-function boxLine(i){
-  const start=syncMap[i];const keys=Object.keys(syncMap).map(Number).sort((a,b)=>a-b);
-  const nx=keys.find(k=>k>i);const end=nx!=null?syncMap[nx]:refBuf.duration;
-  regA=Math.max(0,start/refBuf.duration);regB=Math.min(1,end/refBuf.duration);
-  layoutHandles();updRegLabel();
 }
 let _lastCur=-1;
 function highlightPlaying(absT){
   if(!syncMap)return;const keys=Object.keys(syncMap).map(Number).sort((a,b)=>a-b);
   let cur=-1;for(const k of keys){if(syncMap[k]<=absT+0.05)cur=k;else break;}
   document.querySelectorAll(".lyric").forEach(el=>el.classList.toggle("playing",+el.dataset.i===cur));
-  if(cur!==_lastCur){_lastCur=cur;
-    const el=document.querySelector('.lyric.playing');
+  if(cur!==_lastCur){_lastCur=cur;const el=document.querySelector('.lyric.playing');
     if(el)el.scrollIntoView({block:"center",behavior:"smooth"});}
 }
 function clearPlaying(){document.querySelectorAll(".lyric.playing").forEach(el=>el.classList.remove("playing"));}
 
-$("saveLyrics").addEventListener("click",()=>{const x=$("lyricInput").value;
-  localStorage.setItem(LS_TXT,x);lines=x.split("\n");renderLyrics();toast(t("msg_lyrsaved"));});
-$("editLyrics").addEventListener("click",()=>{$("lyricInput").value=localStorage.getItem(LS_TXT)||lines.join("\n");
-  $("lyricEditWrap").style.display="block";$("lyricBtns").style.display="none";$("syncBtns").style.display="none";
-  $("copySync").style.display="none";$("lyricView").innerHTML="";});
-$("markDone").addEventListener("click",()=>{if(activeLine<0){toast(t("msg_tapfirst"));return;}
-  doneSet.has(activeLine)?doneSet.delete(activeLine):doneSet.add(activeLine);
-  localStorage.setItem(LS_DONE,JSON.stringify([...doneSet]));renderLyrics();});
-
-/* tap-to-sync */
-$("syncStart").addEventListener("click",()=>{
-  if(!lines.some(l=>l.trim())){toast(t("msg_addlyr"));return;}
-  syncMap={};syncing=true;syncCursor=-1;
-  // advance to first non-empty line
-  for(let i=0;i<lines.length;i++){if(lines[i].trim()){syncCursor=i;break;}}
-  $("syncTap").style.display="block";
-  // play full clip
-  regA=0;regB=1;layoutHandles();stopRef();ctx().resume();
-  const s=ctx().createBufferSource();s.buffer=refBuf;s.connect(ctx().destination);
-  s.start();refSrc=s;syncT0=ctx().currentTime;
-  const head=$("head");head.style.display="block";
-  const tick=()=>{const e=ctx().currentTime-syncT0;head.style.left=px(Math.min(e/refBuf.duration,1))+"px";
-    if(e<refBuf.duration&&syncing)headRAF=requestAnimationFrame(tick);else endSync();};
-  tick();
-});
-$("syncTap").addEventListener("click",()=>{
-  if(!syncing)return;const e=ctx().currentTime-syncT0;syncMap[syncCursor]=e;
-  let nx=-1;for(let i=syncCursor+1;i<lines.length;i++){if(lines[i].trim()){nx=i;break;}}
-  if(nx<0){endSync();return;}syncCursor=nx;
-  const el=document.querySelector('.lyric[data-i="'+syncCursor+'"]');if(el)el.scrollIntoView({block:"center"});
-});
-function endSync(){if(!syncing&&!refSrc)return;syncing=false;
-  if(refSrc){try{refSrc.stop()}catch(_){}refSrc=null;}if(headRAF)cancelAnimationFrame(headRAF);
-  $("head").style.display="none";$("syncTap").style.display="none";
-  if(syncMap&&Object.keys(syncMap).length){saveSync();toast(t("msg_synced"));}applyLang();}
-$("syncClear").addEventListener("click",()=>{syncMap=null;localStorage.removeItem(LS_SYNC);applyLang();toast(t("msg_synccleared"));});
-$("copySync").addEventListener("click",async()=>{
-  const keys=Object.keys(syncMap).map(Number).sort((a,b)=>a-b);
-  const arr=keys.map(k=>({t:+syncMap[k].toFixed(3),line:lines[k]}));
-  const json=JSON.stringify(arr,null,2);
-  try{await navigator.clipboard.writeText(json);toast(t("msg_synccopied"));}
-  catch(_){prompt("sync.json:",json);}
-});
-
 (function init(){const x=localStorage.getItem(LS_TXT);
-  if(x){$("lyricInput").value=x;lines=x.split("\n");$("lyricEditWrap").style.display="none";}
+  if(x)lines=x.split("\n");
   applyLang();})();
 </script>
 </body>
