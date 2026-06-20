@@ -125,6 +125,11 @@
 <div class="card">
   <h2><span class="dot ref"></span><span data-i18n="ref_h"></span></h2>
   <div id="songName" style="font-size:16px;font-weight:600;color:var(--ink);margin:-2px 0 10px;display:none"></div>
+  <div class="seg" id="srcSwitch" style="margin-bottom:10px;display:none">
+    <button data-src="vocal" data-i18n="src_vocal"></button>
+    <button data-src="backing" data-i18n="src_backing"></button>
+    <button data-src="full" data-i18n="src_full"></button>
+  </div>
   <div id="noRef" style="display:none">
     <label class="file"><input type="file" id="refFile" accept="audio/*">
       <span style="display:block;padding:11px;background:var(--panel2);border-radius:11px;color:var(--ref);font-weight:600" data-i18n="choose"></span>
@@ -165,6 +170,10 @@
 <!-- PRACTICE -->
 <div class="card">
   <h2><span class="dot you"></span><span data-i18n="practice_h"></span></h2>
+  <div id="backWrap" style="display:none;margin-bottom:8px">
+    <button class="ghost" id="backToggle" style="width:100%"></button>
+    <p class="hint" data-i18n="backing_hint" style="margin-top:6px"></p>
+  </div>
   <div class="row">
     <button class="rec" id="recBtn" disabled></button>
   </div>
@@ -236,16 +245,19 @@ ja:{
   practice_h:"練習", take_h:"あなたの録音", clip_h:"お手本クリップ", loop_off:"リピート", loop_on:"リピート中",
   play_all:"全体", play_sel:"選択範囲", lyrics_h:"歌詞", lyrics_hint:"歌詞をスクロールして見られます。",
   score_h:"採点", score_btn:"このテイクを採点", score_idle:"フレーズを録音してから採点できます。", score_need:"先に録音してください", score_analyzing:"分析中…",
+  src_vocal:"ボーカル", src_backing:"カラオケ", src_full:"フル",
+  backing_off:"🎵 伴奏で録音：オフ", backing_on:"🎵 伴奏で録音：オン",
+  backing_hint:"オンにすると録音中に伴奏（カラオケ）が流れます。きれいに録るにはイヤホン推奨。",
   rhythm:"リズム", intonation:"イントネーション", melody:"メロディ", conf_low:"信頼度 低", conf_med:"信頼度 中", conf_high:"信頼度 高",
   rec:"● 録音", stop:"■ 停止",
   msg_loaded:"お手本を読み込みました", msg_badaudio:"この音源を読み込めませんでした",
   msg_recfail:"録音を処理できませんでした",
   help:`<b>使い方</b>
   <ol>
-    <li><b>上の波形</b>で練習する場所を探す。タップでその位置から再生、−10s/+10sで移動、「全体／選択」で再生範囲を切替。＋/－で拡大・縮小、◀/▶で左右に移動。</li>
+    <li><b>上の波形</b>で練習する場所を探す。タップでその位置から再生、−10s/+10sで移動、「全体/選択」で再生範囲を切替。＋/－で拡大・縮小、◀/▶で左右に移動。曲が複数あれば<b>ボーカル/カラオケ/フル</b>で切替。</li>
     <li>水色のつまみをドラッグして1行を囲む。囲んだ範囲は<b>左のクリップ</b>に表示されます。</li>
     <li><b>左（お手本）</b>の▶でそのフレーズを再生。リピートや速度（0.6/0.8/1×）で練習。</li>
-    <li><b>録音</b>を押して自分の声を録る（お手本は流れません。ヘッドホン推奨）。録音中は<b>緑のメーター</b>が動きます（動かない＝マイク無音）。もう一度押して停止。</li>
+    <li><b>録音</b>を押して自分の声を録る（お手本は流れません。ヘッドホン推奨）。録音中は<b>緑のメーター</b>が動きます（動かない＝マイク無音）。「伴奏で録音」をオンにすると伴奏付きで歌えます（イヤホン推奨）。もう一度押して停止。</li>
     <li><b>右（あなた）</b>の▶で自分の録音を再生。リピートも可。各プレーヤーには再生位置の線が出ます。</li>
     <li><b>採点</b>を押すと、リズム・イントネーション・メロディを0〜100で表示。各項目に信頼度バーと一言アドバイスが付きます（数字は目安。お手本はボーカルのみの音源が前提）。</li>
     <li>左と右を交互に聴いて、発音とイントネーションを近づける。</li>
@@ -264,16 +276,19 @@ en:{
   practice_h:"Practice", take_h:"Your take", clip_h:"Original clip", loop_off:"Repeat", loop_on:"Repeating",
   play_all:"All", play_sel:"Selection", lyrics_h:"Lyrics", lyrics_hint:"Scroll to read the lyrics.",
   score_h:"Score", score_btn:"Score this take", score_idle:"Record a take of the boxed phrase, then score it.", score_need:"Record a take first", score_analyzing:"Analyzing…",
+  src_vocal:"Vocal", src_backing:"Backing", src_full:"Full",
+  backing_off:"🎵 Sing with backing: off", backing_on:"🎵 Sing with backing: on",
+  backing_hint:"When on, the backing track plays while you record so you can sing in time. Use earphones for a clean recording.",
   rhythm:"Rhythm", intonation:"Intonation", melody:"Melody", conf_low:"low confidence", conf_med:"medium confidence", conf_high:"high confidence",
   rec:"● Record", stop:"■ Stop",
   msg_loaded:"Reference loaded", msg_badaudio:"Couldn't read that audio file",
   msg_recfail:"Couldn't process recording",
   help:`<b>How to practice</b>
   <ol>
-    <li>Use the <b>top waveform</b> to find the spot — tap to play from there, −10s/+10s to move, and the <b>All / Sel</b> toggle to play the whole song or just the selection. ＋/－ zoom in/out, ◀/▶ pan.</li>
+    <li>Use the <b>top waveform</b> to find the spot — tap to play from there, −10s/+10s to move, and the <b>All / Sel</b> toggle to play the whole song or just the selection. ＋/－ zoom in/out, ◀/▶ pan. Switch <b>Vocal/Backing/Full</b> if more than one track is loaded.</li>
     <li>Drag the teal handles to box one line. The boxed part shows in the <b>left clip</b>.</li>
     <li><b>Left (original):</b> press ▶ to hear the phrase; use Repeat and 0.6/0.8/1× speed to drill it.</li>
-    <li><b>Record</b> your voice (the original does not play — use headphones). The <b>green meter</b> moves while recording (flat = mic is muted). Press again to stop.</li>
+    <li><b>Record</b> your voice (the original does not play — use headphones). The <b>green meter</b> moves while recording (flat = mic is muted). Turn on <b>Sing with backing</b> to record over the instrumental (use earphones). Press again to stop.</li>
     <li><b>Right (you):</b> press ▶ to hear your take; Repeat if you like. Each player shows a progress line.</li>
     <li><b>Score</b> rates Rhythm, Intonation, and Melody 0–100, each with a confidence bar and a one-line tip (the numbers are a guide; assumes a vocal-only reference).</li>
     <li>Go back and forth between left and right to match pronunciation and intonation.</li>
@@ -291,6 +306,7 @@ function applyLang(){
   $("recBtn").textContent=armed?t("stop"):t("rec");
   $("clipLoopBtn").textContent=clipLoop?t("loop_on"):t("loop_off");
   $("takeLoopBtn").textContent=takeLoop?t("loop_on"):t("loop_off");
+  $("backToggle").textContent=t(singWithBacking?"backing_on":"backing_off");
   $("ljp").classList.toggle("on",LANG==="ja"); $("len").classList.toggle("on",LANG==="en");
   if(refBuf)updRegLabel();
   renderLyrics();
@@ -302,27 +318,54 @@ $("len").onclick=()=>{LANG="en";localStorage.setItem("phraselab_lang","en");appl
 let AC; const ctx=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
 let refBuf=null, regA=0, regB=1, speed=1, refSrc=null, headRAF=null;
 let playPos=0, refMode="", clipLoop=false, topMode="all";
+let srcBufs={vocal:null,full:null,backing:null}, vocalBuf=null, curSrc="vocal";
+let singWithBacking=false, backingRecSrc=null;
 
-async function loadRef(arrbuf){
-  try{ refBuf=await ctx().decodeAudioData(arrbuf); }
-  catch(e){ toast(t("msg_badaudio")); return; }
-  regA=0; regB=1; viewStart=0; viewLen=1;
+function useRef(buf,reset){ if(!buf)return; refBuf=buf;
+  if(reset){regA=0;regB=1;viewStart=0;viewLen=1;playPos=0;}
   $("noRef").style.display="none"; $("refUI").style.display="block"; $("recBtn").disabled=false;
-  drawWave(); layoutHandles(); updRegLabel(); drawClip(); playPos=0; setCursor(); updTransportBtn(); toast(t("msg_loaded"));
+  drawWave(); layoutHandles(); updRegLabel(); drawClip(); setCursor(); updTransportBtn();
+}
+async function loadRef(arrbuf){    // manual picker fallback (no repo files)
+  try{ const b=await ctx().decodeAudioData(arrbuf); srcBufs.vocal=b; vocalBuf=b; useRef(b,true); toast(t("msg_loaded")); }
+  catch(e){ toast(t("msg_badaudio")); }
 }
 $("refFile").addEventListener("change",async e=>{const f=e.target.files[0];if(f)loadRef(await f.arrayBuffer());});
 
-// auto-load clip + lyrics + title hosted next to this page
+function buildSrcSwitch(){
+  let count=0;
+  ["vocal","full","backing"].forEach(k=>{const b=document.querySelector('#srcSwitch [data-src="'+k+'"]');
+    if(!b)return; if(srcBufs[k]){b.style.display="";count++;}else b.style.display="none";
+    b.classList.toggle("on",k===curSrc);});
+  $("srcSwitch").style.display=count>1?"flex":"none";
+}
+$("srcSwitch").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  const k=b.dataset.src;if(!srcBufs[k])return;stopRef();curSrc=k;useRef(srcBufs[k],false);buildSrcSwitch();});
+$("backToggle").addEventListener("click",()=>{singWithBacking=!singWithBacking;
+  $("backToggle").classList.toggle("on",singWithBacking);
+  $("backToggle").style.color=singWithBacking?"var(--ref)":"";
+  $("backToggle").textContent=t(singWithBacking?"backing_on":"backing_off");});
+
+// auto-load tracks + lyrics + title hosted next to this page
 function setSongName(name){const el=$("songName");
-  if(name&&name.trim()){el.textContent=name.trim();el.style.display="block";}
-  else{el.style.display="none";}}
+  if(name&&name.trim()){el.textContent=name.trim();el.style.display="block";}else{el.style.display="none";}}
 (async()=>{
-  let gotRef=false;
-  for(const n of ["reference.m4a","reference.mp3","reference.wav","reference.ogg"]){
-    try{const r=await fetch(n);if(r.ok){gotRef=true;loadRef(await r.arrayBuffer());break;}}catch(_){}
+  const cand={
+    vocal:["reference.mp3","reference.m4a","reference.wav","reference.ogg"],
+    full:["reference_full.mp3","reference_full.m4a","reference_full.wav","reference_full.ogg"],
+    backing:["reference_novocals.mp3","reference_backing.mp3","reference_novocals.m4a","reference_backing.m4a"]};
+  for(const key of ["vocal","full","backing"]){
+    for(const n of cand[key]){
+      try{const r=await fetch(n);if(r.ok){try{srcBufs[key]=await ctx().decodeAudioData(await r.arrayBuffer());}catch(_){}break;}}catch(_){}
+    }
   }
-  if(!gotRef)$("noRef").style.display="block";   // only show the picker if nothing auto-loaded
-  // load lyrics text from the repo (read-only display)
+  vocalBuf=srcBufs.vocal||srcBufs.full||srcBufs.backing;
+  curSrc=srcBufs.vocal?"vocal":srcBufs.full?"full":(srcBufs.backing?"backing":"vocal");
+  if(srcBufs[curSrc]){useRef(srcBufs[curSrc],true);toast(t("msg_loaded"));}
+  else{$("noRef").style.display="block";}
+  buildSrcSwitch();
+  if(srcBufs.backing){$("backWrap").style.display="block";}
+  // lyrics
   let firstLine="";
   for(const n of ["reference.txt","lyrics.txt"]){
     try{const r=await fetch(n,{cache:"no-store"});if(r.ok){
@@ -332,7 +375,6 @@ function setSongName(name){const el=$("songName");
       break;
     }}catch(_){}
   }
-  // song name: title.txt if present, else the first lyric line
   let title="";
   try{const r=await fetch("title.txt",{cache:"no-store"});if(r.ok){title=(await r.text()).split("\n")[0].trim();}}catch(_){}
   setSongName(title||firstLine);
@@ -515,6 +557,7 @@ $("recBtn").addEventListener("click",async()=>{
   catch(e){mediaRec=new MediaRecorder(stream);}
   mediaRec.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data);};
   mediaRec.onstop=async()=>{armed=false;const b=$("recBtn");b.classList.remove("armed");b.textContent=t("rec");
+    if(backingRecSrc){try{backingRecSrc.stop()}catch(_){}backingRecSrc=null;}
     if(!chunks.length){status(LANG==="ja"?"録音できませんでした（音声なし）":"No audio captured - check mic permission","var(--hot)");return;}
     youBlob=new Blob(chunks,{type:mediaRec.mimeType||"audio/webm"});
     if(youURL)URL.revokeObjectURL(youURL);youURL=URL.createObjectURL(youBlob);
@@ -526,6 +569,8 @@ $("recBtn").addEventListener("click",async()=>{
   };
   mediaRec.start(250);armed=true;const b=$("recBtn");b.classList.add("armed");b.textContent=t("stop");
   startMeter();
+  if(singWithBacking&&srcBufs.backing){try{const bk=srcBufs.backing,off=regA*bk.duration,dur=(regB-regA)*bk.duration;
+    const s=ctx().createBufferSource();s.buffer=bk;s.connect(ctx().destination);s.start(0,off,dur);backingRecSrc=s;}catch(_){}}
   status(LANG==="ja"?"● 録音中… もう一度押して停止":"● Recording... press again to stop","var(--hot)");
 });
 
@@ -630,10 +675,11 @@ function sstd(a){if(a.length<2)return 0;const m=a.reduce((x,y)=>x+y,0)/a.length;
   return Math.sqrt(a.reduce((s,v)=>s+(v-m)*(v-m),0)/a.length);}
 
 function analyze(){
-  if(!refBuf||!youBuf)return null;
-  const sr=refBuf.sampleRate;
-  const rs=Math.floor(regA*refBuf.length),re=Math.floor(regB*refBuf.length);
-  let R=capFrames(trimByEnergy(features(refBuf.getChannelData(0),rs,re,sr)),320);
+  const ref=vocalBuf||refBuf;
+  if(!ref||!youBuf)return null;
+  const sr=ref.sampleRate;
+  const rs=Math.floor(regA*ref.length),re=Math.floor(regB*ref.length);
+  let R=capFrames(trimByEnergy(features(ref.getChannelData(0),rs,re,sr)),320);
   let T=capFrames(trimByEnergy(features(youBuf.getChannelData(0),0,youBuf.length,youBuf.sampleRate)),320);
   if(R.env.length<8||T.env.length<8)return {tooShort:true};
   const {cost,path}=dtw(norm01(R.env),norm01(T.env));
