@@ -75,8 +75,8 @@
   .panel canvas{height:74px;background:var(--bg)}
   .wavemini{position:relative}
   .minihead{position:absolute;top:0;bottom:0;width:2px;background:var(--hot);left:0;display:none}
-  .meter{height:9px;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden}
-  .meter > i{display:block;height:100%;width:0%;background:var(--ok);border-radius:6px}
+  .meter{height:13px;background:var(--bg);border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .meter > i{display:block;height:100%;width:0%;background:var(--ok);border-radius:7px;transition:width .04s}
   .panel .prow{display:flex;gap:6px;margin-top:8px}
   .panel .prow button{flex:1;padding:9px 0;font-size:13px}
   .panel.empty-state canvas{opacity:.3}
@@ -124,7 +124,8 @@
 <!-- REFERENCE -->
 <div class="card">
   <h2><span class="dot ref"></span><span data-i18n="ref_h"></span></h2>
-  <div id="noRef">
+  <div id="songName" style="font-size:16px;font-weight:600;color:var(--ink);margin:-2px 0 10px;display:none"></div>
+  <div id="noRef" style="display:none">
     <label class="file"><input type="file" id="refFile" accept="audio/*">
       <span style="display:block;padding:11px;background:var(--panel2);border-radius:11px;color:var(--ref);font-weight:600" data-i18n="choose"></span>
     </label>
@@ -167,7 +168,12 @@
   <div class="row">
     <button class="rec" id="recBtn" disabled></button>
   </div>
-  <div class="meter" id="micMeter" style="margin-top:8px;display:none"><i id="micLevel"></i></div>
+  <div id="micMeter" style="margin-top:8px;display:none">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:13px;color:var(--ink-dim)">🎤</span>
+      <div class="meter" style="flex:1"><i id="micLevel"></i></div>
+    </div>
+  </div>
   <div id="recStatus" style="margin-top:8px;min-height:18px;font-size:13px;font-weight:600;
     padding:8px 10px;border-radius:9px;background:var(--panel2);text-align:center;color:var(--ink-faint)"></div>
   <div class="panels">
@@ -306,19 +312,30 @@ async function loadRef(arrbuf){
 }
 $("refFile").addEventListener("change",async e=>{const f=e.target.files[0];if(f)loadRef(await f.arrayBuffer());});
 
-// auto-load clip + sync hosted next to this page
+// auto-load clip + lyrics + title hosted next to this page
+function setSongName(name){const el=$("songName");
+  if(name&&name.trim()){el.textContent=name.trim();el.style.display="block";}
+  else{el.style.display="none";}}
 (async()=>{
+  let gotRef=false;
   for(const n of ["reference.m4a","reference.mp3","reference.wav","reference.ogg"]){
-    try{const r=await fetch(n);if(r.ok){loadRef(await r.arrayBuffer());break;}}catch(_){}
+    try{const r=await fetch(n);if(r.ok){gotRef=true;loadRef(await r.arrayBuffer());break;}}catch(_){}
   }
+  if(!gotRef)$("noRef").style.display="block";   // only show the picker if nothing auto-loaded
   // load lyrics text from the repo (read-only display)
+  let firstLine="";
   for(const n of ["reference.txt","lyrics.txt"]){
     try{const r=await fetch(n,{cache:"no-store"});if(r.ok){
       const txt=(await r.text()).replace(/\r/g,"");
-      if(txt.trim()){localStorage.setItem(LS_TXT,txt); lines=txt.split("\n"); applyLang();}
+      if(txt.trim()){localStorage.setItem(LS_TXT,txt); lines=txt.split("\n"); applyLang();
+        firstLine=(lines.find(l=>l.trim())||"").trim();}
       break;
     }}catch(_){}
   }
+  // song name: title.txt if present, else the first lyric line
+  let title="";
+  try{const r=await fetch("title.txt",{cache:"no-store"});if(r.ok){title=(await r.text()).split("\n")[0].trim();}}catch(_){}
+  setSongName(title||firstLine);
 })();
 
 /* ---- waveform (with zoom view) ---- */
@@ -472,9 +489,11 @@ async function ensureMic(){if(stream&&stream.active)return stream;
   stream=await navigator.mediaDevices.getUserMedia({audio:true});return stream;}
 let micAnalyser=null,micSource=null;
 function startMeter(){
+  $("micMeter").style.display="block";
   try{if(!micAnalyser){micSource=ctx().createMediaStreamSource(stream);
-    micAnalyser=ctx().createAnalyser();micAnalyser.fftSize=512;micSource.connect(micAnalyser);}}catch(_){return;}
-  const buf=new Uint8Array(micAnalyser.fftSize);$("micMeter").style.display="block";
+    micAnalyser=ctx().createAnalyser();micAnalyser.fftSize=512;micSource.connect(micAnalyser);}}
+  catch(_){$("micLevel").style.width="0%";return;}
+  const buf=new Uint8Array(micAnalyser.fftSize);
   const tick=()=>{if(!armed){$("micMeter").style.display="none";$("micLevel").style.width="0%";return;}
     micAnalyser.getByteTimeDomainData(buf);let peak=0;
     for(let i=0;i<buf.length;i++){const v=Math.abs(buf[i]-128);if(v>peak)peak=v;}
