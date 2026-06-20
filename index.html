@@ -49,11 +49,15 @@
   .region{position:absolute;top:0;bottom:0;background:rgba(90,209,200,.10);
     border-left:1px solid rgba(90,209,200,.4);border-right:1px solid rgba(90,209,200,.4)}
   .playhead{position:absolute;top:0;bottom:0;width:1.5px;background:var(--hot);left:0;display:none}
+  .cursor{position:absolute;top:0;bottom:0;width:1.5px;background:var(--ink-dim);left:0;display:none;opacity:.7}
   label.file{display:block;text-align:center}
   input[type=file]{display:none}
   textarea{width:100%;min-height:80px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
     border-radius:10px;padding:10px;font-size:15px;font-family:var(--sans);line-height:1.5;resize:vertical}
-  .lyrics{margin-top:4px}
+  .lyrics{margin-top:4px;max-height:48vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  .lyrics::-webkit-scrollbar{width:6px}
+  .lyrics::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
   .lyric{padding:9px 11px;border-radius:9px;font-size:16px;line-height:1.35;color:var(--ink-dim);
     cursor:pointer;border:1px solid transparent}
   .lyric.active{background:var(--panel2);color:var(--ink);border-color:var(--line)}
@@ -112,9 +116,16 @@
         <div class="region" id="region"></div>
         <div class="handle a" id="hA"></div><div class="handle b" id="hB"></div>
         <div class="playhead" id="head"></div>
+        <div class="cursor" id="cur"></div>
       </div>
     </div>
     <div class="meta"><span id="regLabel"></span><span><a class="mini" id="changeRef" data-i18n="change"></a></span></div>
+    <div class="row" id="transport" style="margin-top:10px">
+      <button class="ghost" id="tBack" style="flex:0 0 66px">−10s</button>
+      <button class="playref" id="tPlay" style="flex:1;font-size:16px">▶</button>
+      <button class="ghost" id="tFwd" style="flex:0 0 66px">+10s</button>
+    </div>
+    <p class="hint" data-i18n="transport_hint"></p>
     <div class="row" style="margin-top:10px">
       <button class="playref" id="playRef"></button>
       <button class="ghost" id="loopBtn" style="flex:0 0 96px"></button>
@@ -191,6 +202,7 @@ ja:{
   change:"音源を変える",
   play_phrase:"▶ フレーズを再生", loop:"リピート", on:"オン", off:"オフ",
   drag_hint:"2つの水色のつまみをドラッグして1行を囲みます（同期済みなら歌詞をタップでも自動で囲みます）。遅い速度は音程も下がるので、イントネーションの確認は1×で。",
+  transport_hint:"波形をタップするとその位置から再生。▶/■で再生・停止、−10s/+10sで10秒戻る・進む。",
   take_h:"あなたの録音", rec:"● 録音", stop:"■ 停止", play_mine:"▶ 自分のを再生",
   hear_ref:"お手本を聴く", then_mine:"次に自分のを",
   leg_ref:"お手本", leg_you:"あなた", leg_axis:"↑ 高い ・ → 時間",
@@ -228,6 +240,7 @@ en:{
   change:"change clip",
   play_phrase:"▶ Play phrase", loop:"Loop", on:"on", off:"off",
   drag_hint:"Drag the two teal handles to box one line (or tap a synced lyric to box it automatically). Slower speeds also drop the pitch — use 1× for intonation.",
+  transport_hint:"Tap the waveform to play from there. ▶/■ to play/stop, −10s/+10s to jump back or ahead 10 seconds.",
   take_h:"Your take", rec:"● Record", stop:"■ Stop", play_mine:"▶ Play mine",
   hear_ref:"Hear theirs", then_mine:"then mine",
   leg_ref:"reference", leg_you:"you", leg_axis:"↑ higher · → time",
@@ -282,13 +295,14 @@ $("len").onclick=()=>{LANG="en";localStorage.setItem("phraselab_lang","en");appl
 /* ============ AUDIO CORE ============ */
 let AC; const ctx=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
 let refBuf=null, regA=0, regB=1, loop=false, speed=1, refSrc=null, headRAF=null;
+let playPos=0, transporting=false;
 
 async function loadRef(arrbuf){
   try{ refBuf=await ctx().decodeAudioData(arrbuf); }
   catch(e){ toast(t("msg_badaudio")); return; }
   regA=0; regB=1;
   $("noRef").style.display="none"; $("refUI").style.display="block"; $("recBtn").disabled=false;
-  drawWave(); layoutHandles(); updRegLabel(); toast(t("msg_loaded"));
+  drawWave(); layoutHandles(); updRegLabel(); playPos=0; setCursor(); updTransportBtn(); toast(t("msg_loaded"));
 }
 $("refFile").addEventListener("change",async e=>{const f=e.target.files[0];if(f)loadRef(await f.arrayBuffer());});
 $("changeRef").addEventListener("click",()=>$("refFile").click());
@@ -298,13 +312,25 @@ $("changeRef").addEventListener("click",()=>$("refFile").click());
   for(const n of ["reference.m4a","reference.mp3","reference.wav","reference.ogg"]){
     try{const r=await fetch(n);if(r.ok){loadRef(await r.arrayBuffer());break;}}catch(_){}
   }
+  let syncLoaded=false;
   try{const r=await fetch("sync.json");if(r.ok){
     const arr=await r.json();
     const txt=arr.map(o=>o.line).join("\n"); localStorage.setItem(LS_TXT,txt);
     lines=txt.split("\n"); syncMap={};
     let li=0; arr.forEach(o=>{while(li<lines.length&&!lines[li].trim())li++; if(li<lines.length){syncMap[li]=o.t;li++;}});
-    saveSync(); $("lyricEditWrap").style.display="none"; applyLang();
+    saveSync(); $("lyricEditWrap").style.display="none"; applyLang(); syncLoaded=true;
   }}catch(_){}
+  // plain lyrics file — load whenever present (repo is the source of truth); sync.json wins if present
+  if(!syncLoaded){
+    for(const n of ["reference.txt","lyrics.txt"]){
+      try{const r=await fetch(n,{cache:"no-store"});if(r.ok){
+        const txt=(await r.text()).replace(/\r/g,"");
+        if(txt.trim()){localStorage.setItem(LS_TXT,txt); lines=txt.split("\n");
+          $("lyricEditWrap").style.display="none"; applyLang();}
+        break;
+      }}catch(_){}
+    }
+  }
 })();
 
 /* ---- waveform ---- */
@@ -342,8 +368,37 @@ dragHandle($("hA"),true);dragHandle($("hB"),false);
 addEventListener("resize",()=>{if(refBuf){drawWave();layoutHandles();}if(youBuf)drawPitch();});
 
 /* ---- play region ---- */
+function setCursor(){if(!refBuf)return;const c=$("cur");c.style.display="block";
+  c.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";}
+function updTransportBtn(){$("tPlay").textContent=transporting?"■":"▶";}
 function stopRef(){if(refSrc){try{refSrc.stop()}catch(_){}refSrc=null;}
-  if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";clearPlaying();}
+  if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";clearPlaying();
+  transporting=false;updTransportBtn();if(refBuf)setCursor();}
+/* ---- transport: free seek over whole song ---- */
+function transportPlay(from){
+  if(!refBuf)return;stopRef();ctx().resume();
+  playPos=Math.max(0,Math.min(from,refBuf.duration-0.02));
+  const s=ctx().createBufferSource();s.buffer=refBuf;s.connect(ctx().destination);
+  s.start(0,playPos);refSrc=s;transporting=true;
+  $("cur").style.display="none";
+  const t0=ctx().currentTime,start=playPos,head=$("head");head.style.display="block";
+  const tick=()=>{playPos=start+(ctx().currentTime-t0);
+    head.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";highlightPlaying(playPos);
+    if(playPos<refBuf.duration&&transporting)headRAF=requestAnimationFrame(tick);
+    else{if(playPos>=refBuf.duration)playPos=0;stopRef();}};
+  tick();
+  s.onended=()=>{if(refSrc===s){if(playPos>=refBuf.duration-0.05)playPos=0;stopRef();}};
+  updTransportBtn();
+}
+function seekBy(d){if(!refBuf)return;
+  const np=Math.max(0,Math.min(playPos+d,refBuf.duration-0.02));
+  if(transporting)transportPlay(np);else{playPos=np;setCursor();}}
+$("tPlay").addEventListener("click",()=>{if(transporting)stopRef();else transportPlay(playPos);});
+$("tBack").addEventListener("click",()=>seekBy(-10));
+$("tFwd").addEventListener("click",()=>seekBy(10));
+wave.addEventListener("click",e=>{if(!refBuf)return;
+  const rect=wave.getBoundingClientRect();let r=(e.clientX-rect.left)/rect.width;
+  r=Math.max(0,Math.min(1,r));transportPlay(r*refBuf.duration);});
 function playRegion(after){
   if(!refBuf)return;stopRef();ctx().resume();
   const off=regA*refBuf.duration,dur=(regB-regA)*refBuf.duration;
@@ -451,10 +506,14 @@ function boxLine(i){
   regA=Math.max(0,start/refBuf.duration);regB=Math.min(1,end/refBuf.duration);
   layoutHandles();updRegLabel();
 }
+let _lastCur=-1;
 function highlightPlaying(absT){
   if(!syncMap)return;const keys=Object.keys(syncMap).map(Number).sort((a,b)=>a-b);
   let cur=-1;for(const k of keys){if(syncMap[k]<=absT+0.05)cur=k;else break;}
   document.querySelectorAll(".lyric").forEach(el=>el.classList.toggle("playing",+el.dataset.i===cur));
+  if(cur!==_lastCur){_lastCur=cur;
+    const el=document.querySelector('.lyric.playing');
+    if(el)el.scrollIntoView({block:"center",behavior:"smooth"});}
 }
 function clearPlaying(){document.querySelectorAll(".lyric.playing").forEach(el=>el.classList.remove("playing"));}
 
