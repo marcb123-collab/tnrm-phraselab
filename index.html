@@ -64,8 +64,14 @@
   .seg button.on{background:var(--panel);color:var(--ink)}
   .meta{font-family:var(--mono);font-size:11px;color:var(--ink-faint);display:flex;justify-content:space-between;margin-top:8px}
   .hint{font-size:11px;color:var(--ink-faint);line-height:1.55;margin-top:8px}
-  .pitchlegend{display:flex;gap:14px;font-size:11px;color:var(--ink-dim);margin-bottom:8px}
-  .pitchlegend span{display:flex;align-items:center;gap:6px}
+  .panels{display:flex;gap:10px;margin-top:12px}
+  .panel{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:9px}
+  .panel h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin:0 0 7px;font-weight:600;
+    display:flex;align-items:center;gap:6px;color:var(--ink-dim)}
+  .panel canvas{height:74px;background:var(--bg)}
+  .panel .prow{display:flex;gap:6px;margin-top:8px}
+  .panel .prow button{flex:1;padding:9px 0;font-size:13px}
+  .panel.empty-state canvas{opacity:.3}
   .empty{color:var(--ink-faint);font-size:13px;text-align:center;padding:18px 6px}
   .syncbig{background:var(--ref);color:#06231f;font-size:17px;padding:16px;width:100%;margin-top:8px;display:none}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#000;color:#fff;
@@ -122,40 +128,38 @@
       <button class="ghost" id="tFwd" style="flex:0 0 66px">+10s</button>
     </div>
     <p class="hint" data-i18n="transport_hint"></p>
-    <div class="row" style="margin-top:10px">
-      <button class="playref" id="playRef"></button>
-      <button class="ghost" id="stopRefBtn" style="flex:0 0 52px">■</button>
-      <button class="ghost" id="loopBtn" style="flex:0 0 96px"></button>
-    </div>
-    <div class="seg" style="margin-top:8px" id="speed">
-      <button data-s="0.6">0.6×</button><button data-s="0.8">0.8×</button><button data-s="1" class="on">1×</button>
-    </div>
     <p class="hint" data-i18n="drag_hint"></p>
   </div>
 </div>
 
-<!-- RECORD + COMPARE -->
+<!-- PRACTICE -->
 <div class="card">
-  <h2><span class="dot you"></span><span data-i18n="take_h"></span></h2>
+  <h2><span class="dot you"></span><span data-i18n="practice_h"></span></h2>
   <div class="row">
     <button class="rec" id="recBtn" disabled></button>
-    <button class="playyou" id="playYou" disabled></button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button class="playref" id="abRef" disabled></button>
-    <button class="playyou" id="abYou" disabled></button>
   </div>
   <div id="recStatus" class="hint" style="margin-top:8px;min-height:16px"></div>
-  <div id="pitchBox" style="margin-top:12px;display:none">
-    <div class="pitchlegend">
-      <span><span class="dot ref"></span><span data-i18n="leg_ref"></span></span>
-      <span><span class="dot you"></span><span data-i18n="leg_you"></span></span>
-      <span style="color:var(--ink-faint)" data-i18n="leg_axis"></span>
+  <div class="panels">
+    <div class="panel" id="clipPanel">
+      <h3><span class="dot ref"></span><span data-i18n="clip_h"></span></h3>
+      <canvas id="clipWave" height="74"></canvas>
+      <div class="prow">
+        <button class="playref" id="clipPlay">▶</button>
+        <button class="ghost" id="clipLoopBtn" data-i18n="loop_off"></button>
+      </div>
+      <div class="seg" style="margin-top:6px" id="speed">
+        <button data-s="0.6">0.6×</button><button data-s="0.8">0.8×</button><button data-s="1" class="on">1×</button>
+      </div>
     </div>
-    <canvas id="pitch" height="150"></canvas>
-    <p class="hint" data-i18n="pitch_hint"></p>
+    <div class="panel empty-state" id="takePanel">
+      <h3><span class="dot you"></span><span data-i18n="take_h"></span></h3>
+      <canvas id="takeWave" height="74"></canvas>
+      <div class="prow">
+        <button class="playyou" id="takePlay" disabled>▶</button>
+        <button class="ghost" id="takeLoopBtn" disabled data-i18n="loop_off"></button>
+      </div>
+    </div>
   </div>
-  <div id="pitchEmpty" class="empty" data-i18n="pitch_empty"></div>
 </div>
 
 <!-- LYRICS -->
@@ -182,8 +186,9 @@ ja:{
   ref_hint:"権利のある短い音源を使ってください。ボーカルのみの音源（AIで分離した声、またはトリ／デールの歌だけ）だと、ピッチの線がきれいに出ます。",
   change:"音源を変える",
   play_phrase:"▶ フレーズを再生", loop:"リピート", on:"オン", off:"オフ",
-  drag_hint:"2つの水色のつまみをドラッグして1行を囲みます（同期済みなら歌詞をタップでも自動で囲みます）。遅い速度は音程も下がるので、イントネーションの確認は1×で。",
+  drag_hint:"水色のつまみをドラッグして練習する1行を囲みます。",
   transport_hint:"波形をタップするとその位置から再生。▶/■で再生・停止、−10s/+10sで10秒戻る・進む。",
+  practice_h:"練習", take_h:"あなたの録音", clip_h:"お手本クリップ", loop_off:"リピート", loop_on:"リピート中", drag_hint:"水色のつまみをドラッグして練習する1行を囲みます。",
   take_h:"あなたの録音", rec:"● 録音", stop:"■ 停止", play_mine:"▶ 自分のを再生",
   hear_ref:"お手本を聴く", then_mine:"次に自分のを",
   leg_ref:"お手本", leg_you:"あなた", leg_axis:"↑ 高い ・ → 時間",
@@ -220,8 +225,9 @@ en:{
   ref_hint:"A short clip you have the rights to. A vocal-only file (AI-split voice, or Tori/Dale singing dry) gives the cleanest pitch line.",
   change:"change clip",
   play_phrase:"▶ Play phrase", loop:"Loop", on:"on", off:"off",
-  drag_hint:"Drag the two teal handles to box one line (or tap a synced lyric to box it automatically). Slower speeds also drop the pitch — use 1× for intonation.",
+  drag_hint:"Drag the teal handles to box the line you want to practice.",
   transport_hint:"Tap the waveform to play from there. ▶/■ to play/stop, −10s/+10s to jump back or ahead 10 seconds.",
+  practice_h:"Practice", take_h:"Your take", clip_h:"Original clip", loop_off:"Repeat", loop_on:"Repeating", drag_hint:"Drag the teal handles to box the line you want to practice.",
   take_h:"Your take", rec:"● Record", stop:"■ Stop", play_mine:"▶ Play mine",
   hear_ref:"Hear theirs", then_mine:"then mine",
   leg_ref:"reference", leg_you:"you", leg_axis:"↑ higher · → time",
@@ -259,11 +265,9 @@ function applyLang(){
   document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
   document.querySelectorAll("[data-i18n-ph]").forEach(el=>el.placeholder=t(el.dataset.i18nPh));
   $("helpBody").innerHTML=t("help");
-  $("playRef").textContent=t("play_phrase");
-  $("loopBtn").textContent=t("loop")+": "+(loop?t("on"):t("off"));
   $("recBtn").textContent=armed?t("stop"):t("rec");
-  $("playYou").textContent=t("play_mine");
-  $("abRef").textContent=t("hear_ref"); $("abYou").textContent=t("then_mine");
+  $("clipLoopBtn").textContent=clipLoop?t("loop_on"):t("loop_off");
+  $("takeLoopBtn").textContent=takeLoop?t("loop_on"):t("loop_off");
   $("ljp").classList.toggle("on",LANG==="ja"); $("len").classList.toggle("on",LANG==="en");
   if(refBuf)updRegLabel();
   renderLyrics();
@@ -273,15 +277,15 @@ $("len").onclick=()=>{LANG="en";localStorage.setItem("phraselab_lang","en");appl
 
 /* ============ AUDIO CORE ============ */
 let AC; const ctx=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
-let refBuf=null, regA=0, regB=1, loop=false, speed=1, refSrc=null, headRAF=null;
-let playPos=0, transporting=false;
+let refBuf=null, regA=0, regB=1, speed=1, refSrc=null, headRAF=null;
+let playPos=0, refMode="", clipLoop=false;
 
 async function loadRef(arrbuf){
   try{ refBuf=await ctx().decodeAudioData(arrbuf); }
   catch(e){ toast(t("msg_badaudio")); return; }
   regA=0; regB=1;
   $("noRef").style.display="none"; $("refUI").style.display="block"; $("recBtn").disabled=false;
-  drawWave(); layoutHandles(); updRegLabel(); playPos=0; setCursor(); updTransportBtn(); toast(t("msg_loaded"));
+  drawWave(); layoutHandles(); updRegLabel(); drawClip(); playPos=0; setCursor(); updTransportBtn(); toast(t("msg_loaded"));
 }
 $("refFile").addEventListener("change",async e=>{const f=e.target.files[0];if(f)loadRef(await f.arrayBuffer());});
 
@@ -323,7 +327,7 @@ function dragHandle(el,isA){
   const move=ev=>{const c=ev.touches?ev.touches[0]:ev,rect=handles.getBoundingClientRect();
     let p=(c.clientX-rect.left)/rect.width;p=Math.max(0,Math.min(1,p));
     if(isA)regA=Math.min(p,regB-0.01);else regB=Math.max(p,regA+0.01);
-    layoutHandles();updRegLabel();};
+    layoutHandles();updRegLabel();drawClip();};
   const up=()=>{["touchmove","mousemove"].forEach(e=>document.removeEventListener(e,move));
     ["touchend","mouseup"].forEach(e=>document.removeEventListener(e,up));};
   const down=ev=>{ev.preventDefault();
@@ -332,63 +336,86 @@ function dragHandle(el,isA){
   el.addEventListener("touchstart",down,{passive:false});el.addEventListener("mousedown",down);
 }
 dragHandle($("hA"),true);dragHandle($("hB"),false);
-addEventListener("resize",()=>{if(refBuf){drawWave();layoutHandles();}if(youBuf)drawPitch();});
+addEventListener("resize",()=>{if(refBuf){drawWave();layoutHandles();drawClip();}if(youBuf)drawTake();});
 
-/* ---- play region ---- */
+/* ---- small-panel waveform drawer ---- */
+function drawInto(cv,ch,s,e){
+  const dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+  cv.width=w*dpr;cv.height=h*dpr;const g=cv.getContext("2d");g.scale(dpr,dpr);g.clearRect(0,0,w,h);
+  if(!ch||e<=s)return;
+  const n=e-s,step=Math.max(1,Math.floor(n/w));
+  g.strokeStyle="#6b7488";g.lineWidth=1;g.beginPath();
+  for(let x=0;x<w;x++){let mn=1,mx=-1;
+    for(let i=0;i<step;i++){const v=ch[s+x*step+i]||0;if(v<mn)mn=v;if(v>mx)mx=v;}
+    g.moveTo(x,(1-(mx*0.9+1)/2)*h);g.lineTo(x,(1-(mn*0.9+1)/2)*h);}
+  g.stroke();
+}
+function drawClip(){if(!refBuf)return;
+  const s=Math.floor(regA*refBuf.length),e=Math.floor(regB*refBuf.length);
+  drawInto($("clipWave"),refBuf.getChannelData(0),s,e);}
+function drawTake(){if(!youBuf)return;
+  drawInto($("takeWave"),youBuf.getChannelData(0),0,youBuf.length);}
+
+/* ---- selector transport (whole song) ---- */
 function setCursor(){if(!refBuf)return;const c=$("cur");c.style.display="block";
   c.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";}
-function updTransportBtn(){$("tPlay").textContent=transporting?"■":"▶";}
+function updTransportBtn(){$("tPlay").textContent=refMode==="transport"?"■":"▶";}
+function updClipBtn(){$("clipPlay").textContent=refMode==="clip"?"■":"▶";}
 function stopRef(){if(refSrc){try{refSrc.stop()}catch(_){}refSrc=null;}
   if(headRAF)cancelAnimationFrame(headRAF);$("head").style.display="none";
-  transporting=false;updTransportBtn();if(refBuf)setCursor();}
-/* ---- transport: free seek over whole song ---- */
+  refMode="";updTransportBtn();updClipBtn();if(refBuf)setCursor();}
 function transportPlay(from){
   if(!refBuf)return;stopRef();ctx().resume();
   playPos=Math.max(0,Math.min(from,refBuf.duration-0.02));
   const s=ctx().createBufferSource();s.buffer=refBuf;s.connect(ctx().destination);
-  s.start(0,playPos);refSrc=s;transporting=true;
+  s.start(0,playPos);refSrc=s;refMode="transport";
   $("cur").style.display="none";
   const t0=ctx().currentTime,start=playPos,head=$("head");head.style.display="block";
   const tick=()=>{playPos=start+(ctx().currentTime-t0);
     head.style.left=px(Math.min(playPos/refBuf.duration,1))+"px";
-    if(playPos<refBuf.duration&&transporting)headRAF=requestAnimationFrame(tick);
+    if(playPos<refBuf.duration&&refMode==="transport")headRAF=requestAnimationFrame(tick);
     else{if(playPos>=refBuf.duration)playPos=0;stopRef();}};
   tick();
   s.onended=()=>{if(refSrc===s){if(playPos>=refBuf.duration-0.05)playPos=0;stopRef();}};
-  updTransportBtn();
+  updTransportBtn();updClipBtn();
 }
 function seekBy(d){if(!refBuf)return;
   const np=Math.max(0,Math.min(playPos+d,refBuf.duration-0.02));
-  if(transporting)transportPlay(np);else{playPos=np;setCursor();}}
-$("tPlay").addEventListener("click",()=>{if(transporting)stopRef();else transportPlay(playPos);});
+  if(refMode==="transport")transportPlay(np);else{playPos=np;setCursor();}}
+$("tPlay").addEventListener("click",()=>{if(refMode==="transport")stopRef();else transportPlay(playPos);});
 $("tBack").addEventListener("click",()=>seekBy(-10));
 $("tFwd").addEventListener("click",()=>seekBy(10));
 wave.addEventListener("click",e=>{if(!refBuf)return;
   const rect=wave.getBoundingClientRect();let r=(e.clientX-rect.left)/rect.width;
   r=Math.max(0,Math.min(1,r));transportPlay(r*refBuf.duration);});
-function playRegion(after){
+
+/* ---- LEFT panel: play the selected clip ---- */
+function playClip(){
   if(!refBuf)return;stopRef();ctx().resume();
   const off=regA*refBuf.duration,dur=(regB-regA)*refBuf.duration;
   const s=ctx().createBufferSource();s.buffer=refBuf;s.playbackRate.value=speed;
-  s.connect(ctx().destination);s.loop=loop;s.loopStart=off;s.loopEnd=regB*refBuf.duration;
-  s.start(0,off,loop?undefined:dur);refSrc=s;
+  s.connect(ctx().destination);s.loop=clipLoop;s.loopStart=off;s.loopEnd=regB*refBuf.duration;
+  s.start(0,off,clipLoop?undefined:dur);refSrc=s;refMode="clip";
   const t0=ctx().currentTime,head=$("head");head.style.display="block";
-  const tick=()=>{let e=(ctx().currentTime-t0)*speed;if(loop)e=e%dur;
-    const abs=off+e;const p=abs/refBuf.duration;head.style.left=px(Math.min(p,regB))+"px";
-    if(loop||e<dur)headRAF=requestAnimationFrame(tick);
-    else{head.style.display="none";if(after)after();}};
+  const tick=()=>{let e=(ctx().currentTime-t0)*speed;if(clipLoop)e=e%dur;
+    const p=(off+e)/refBuf.duration;head.style.left=px(Math.min(p,regB))+"px";
+    if((clipLoop||e<dur)&&refMode==="clip")headRAF=requestAnimationFrame(tick);
+    else if(!clipLoop)stopRef();};
   tick();
-  if(!loop)s.onended=()=>{if(refSrc===s){head.style.display="none";if(after)after();}};
+  if(!clipLoop)s.onended=()=>{if(refSrc===s)stopRef();};
+  updClipBtn();updTransportBtn();
 }
-$("playRef").addEventListener("click",()=>playRegion());
-$("loopBtn").addEventListener("click",()=>{loop=!loop;
-  $("loopBtn").textContent=t("loop")+": "+(loop?t("on"):t("off"));
-  $("loopBtn").style.color=loop?"var(--ref)":"";if(!loop)stopRef();});
+$("clipPlay").addEventListener("click",()=>{if(refMode==="clip")stopRef();else playClip();});
+$("clipLoopBtn").addEventListener("click",()=>{clipLoop=!clipLoop;
+  $("clipLoopBtn").textContent=clipLoop?t("loop_on"):t("loop_off");
+  $("clipLoopBtn").style.color=clipLoop?"var(--ref)":"";
+  if(refMode==="clip")playClip();});
 $("speed").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
-  [...$("speed").children].forEach(x=>x.classList.remove("on"));b.classList.add("on");speed=parseFloat(b.dataset.s);});
+  [...$("speed").children].forEach(x=>x.classList.remove("on"));b.classList.add("on");speed=parseFloat(b.dataset.s);
+  if(refMode==="clip")playClip();});
 
-/* ---- record ---- */
-let mediaRec=null,chunks=[],youBuf=null,youBlob=null,youURL=null,youAudio=null,stream=null,armed=false;
+/* ---- record (mic only) ---- */
+let mediaRec=null,chunks=[],youBuf=null,youBlob=null,youURL=null,youAudio=null,stream=null,armed=false,takeLoop=false,takePlaying=false;
 const RS=()=>$("recStatus");
 function status(m,c){RS().textContent=m;RS().style.color=c||"var(--ink-faint)";}
 async function ensureMic(){if(stream&&stream.active)return stream;
@@ -397,67 +424,43 @@ function pickMime(){for(const m of ["audio/webm;codecs=opus","audio/webm","audio
   {if(m===""||(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)))return m;}return "";}
 $("recBtn").addEventListener("click",async()=>{
   if(armed){try{mediaRec.requestData()}catch(_){}try{mediaRec.stop()}catch(_){}return;}
-  stopRef(); // make sure the original isn't playing into the mic
+  stopRef();
   if(!window.MediaRecorder){status("MediaRecorder not supported in this browser","var(--hot)");return;}
   status(LANG==="ja"?"マイクを準備中…":"Starting mic…");
   try{await ensureMic();}
-  catch(e){status((LANG==="ja"?"マイク不可: ":"Mic error: ")+((e&&e.name)||"error")+(LANG==="ja"?"（鍵アイコン→マイクを許可）":" (lock icon → allow mic)"),"var(--hot)");return;}
+  catch(e){status((LANG==="ja"?"マイク不可: ":"Mic error: ")+((e&&e.name)||"error")+(LANG==="ja"?"（鍵アイコン→マイクを許可）":" (lock icon - allow mic)"),"var(--hot)");return;}
   chunks=[];const mm=pickMime();
   try{mediaRec=mm?new MediaRecorder(stream,{mimeType:mm}):new MediaRecorder(stream);}
   catch(e){mediaRec=new MediaRecorder(stream);}
   mediaRec.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data);};
   mediaRec.onstop=async()=>{armed=false;const b=$("recBtn");b.classList.remove("armed");b.textContent=t("rec");
-    if(!chunks.length){status(LANG==="ja"?"録音できませんでした（音声なし）":"No audio captured — check mic permission","var(--hot)");return;}
+    if(!chunks.length){status(LANG==="ja"?"録音できませんでした（音声なし）":"No audio captured - check mic permission","var(--hot)");return;}
     youBlob=new Blob(chunks,{type:mediaRec.mimeType||"audio/webm"});
     if(youURL)URL.revokeObjectURL(youURL);youURL=URL.createObjectURL(youBlob);
-    $("playYou").disabled=false;$("abRef").disabled=false;$("abYou").disabled=false;
+    $("takePlay").disabled=false;$("takeLoopBtn").disabled=false;$("takePanel").classList.remove("empty-state");
     status((LANG==="ja"?"保存しました ✓ ":"Saved ✓ ")+Math.round(youBlob.size/1024)+" KB","var(--ok)");
-    try{youBuf=await ctx().decodeAudioData(await youBlob.arrayBuffer());drawPitch();}
-    catch(e){youBuf=null;}   // playback still works via the audio element; pitch just unavailable
+    try{youBuf=await ctx().decodeAudioData(await youBlob.arrayBuffer());drawTake();}
+    catch(e){youBuf=null;drawInto($("takeWave"),null,0,0);}
   };
   mediaRec.start(250);armed=true;const b=$("recBtn");b.classList.add("armed");b.textContent=t("stop");
-  status(LANG==="ja"?"● 録音中… もう一度押して停止":"● Recording… press again to stop","var(--hot)");
+  status(LANG==="ja"?"● 録音中… もう一度押して停止":"● Recording... press again to stop","var(--hot)");
 });
-/* ---- play her take (blob URL = robust on desktop Chrome) ---- */
-function playYou(){if(!youURL)return;ctx().resume();
+
+/* ---- RIGHT panel: play the recorded take (independent) ---- */
+function stopTake(){if(youAudio){try{youAudio.pause()}catch(_){}}takePlaying=false;$("takePlay").textContent="▶";}
+function playTake(){if(!youURL)return;ctx().resume();
   if(youAudio){try{youAudio.pause()}catch(_){}}
-  youAudio=new Audio(youURL);youAudio.play().catch(()=>toast(t("msg_recfail")));}
-$("playYou").addEventListener("click",playYou);
-$("abRef").addEventListener("click",()=>playRegion());
-$("abYou").addEventListener("click",playYou);
-/* stop button + unlock audio on first gesture */
-$("stopRefBtn").addEventListener("click",()=>{stopRef();if(youAudio){try{youAudio.pause()}catch(_){}}});
+  youAudio=new Audio(youURL);youAudio.loop=takeLoop;
+  youAudio.onended=()=>{if(!takeLoop){takePlaying=false;$("takePlay").textContent="▶";}};
+  youAudio.play().then(()=>{takePlaying=true;$("takePlay").textContent="■";})
+    .catch(()=>status(LANG==="ja"?"再生できません":"Can't play take","var(--hot)"));}
+$("takePlay").addEventListener("click",()=>{if(takePlaying)stopTake();else playTake();});
+$("takeLoopBtn").addEventListener("click",()=>{takeLoop=!takeLoop;
+  $("takeLoopBtn").textContent=takeLoop?t("loop_on"):t("loop_off");
+  $("takeLoopBtn").style.color=takeLoop?"var(--you)":"";
+  if(youAudio)youAudio.loop=takeLoop;});
+
 ["pointerdown","keydown","touchstart"].forEach(e=>document.addEventListener(e,()=>{try{ctx().resume()}catch(_){}},{passive:true}));
-
-
-/* ---- pitch ---- */
-function pitchAt(buf,sr,start,len){let rms=0;for(let i=0;i<len;i++){const v=buf[start+i]||0;rms+=v*v;}
-  rms=Math.sqrt(rms/len);if(rms<0.008)return 0;
-  const maxLag=Math.floor(sr/80),minLag=Math.floor(sr/1000),c=new Float32Array(maxLag);
-  for(let lag=minLag;lag<maxLag;lag++){let sum=0;for(let i=0;i<len-lag;i++)sum+=(buf[start+i]||0)*(buf[start+i+lag]||0);c[lag]=sum;}
-  let d=minLag;while(d<maxLag-1&&c[d]>c[d+1])d++;
-  let max=-1,pos=-1;for(let i=d;i<maxLag;i++){if(c[i]>max){max=c[i];pos=i;}}
-  return pos>0?sr/pos:0;}
-function contour(ch,sr){const win=Math.floor(sr*0.045),hop=Math.floor(sr*0.018),out=[];
-  for(let s=0;s+win<ch.length;s+=hop){const f=pitchAt(ch,sr,s,win);out.push(f>0?(69+12*Math.log2(f/440)):null);}return out;}
-function drawPitch(){if(!refBuf||!youBuf)return;
-  $("pitchEmpty").style.display="none";$("pitchBox").style.display="block";
-  const cv=$("pitch"),dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
-  cv.width=w*dpr;cv.height=h*dpr;const g=cv.getContext("2d");g.scale(dpr,dpr);g.clearRect(0,0,w,h);
-  const sr=refBuf.sampleRate,s=Math.floor(regA*refBuf.length),e=Math.floor(regB*refBuf.length);
-  const rC=contour(refBuf.getChannelData(0).slice(s,e),sr);
-  const yC=contour(youBuf.getChannelData(0),youBuf.sampleRate);
-  const vals=[...rC,...yC].filter(v=>v!=null);
-  if(!vals.length){g.fillStyle="#5e6678";g.font="13px sans-serif";g.fillText(t("msg_nopitch"),12,h/2);return;}
-  let lo=Math.min(...vals)-2,hi=Math.max(...vals)+2;
-  g.strokeStyle="#262b38";g.lineWidth=1;
-  for(let n=Math.ceil(lo);n<=hi;n++){if(n%12)continue;const y=h-((n-lo)/(hi-lo))*h;g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
-  const cs=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  const plot=(arr,color)=>{g.strokeStyle=color;g.lineWidth=2.4;g.lineJoin="round";g.beginPath();let st=false;
-    arr.forEach((v,i)=>{const x=(i/(arr.length-1))*w;if(v==null){st=false;return;}
-      const y=h-((v-lo)/(hi-lo))*h;if(!st){g.moveTo(x,y);st=true;}else g.lineTo(x,y);});g.stroke();};
-  plot(rC,cs("--ref"));plot(yC,cs("--you"));
-}
 
 /* ============ LYRICS + SYNC ============ */
 const LS_TXT="phraselab_lyrics";
